@@ -1,0 +1,27 @@
+# Delphi / RAD Studio Build
+__history/
+__recovery/
+*.dcu
+*.dcp
+*.dcpil
+*.bpl
+*.bpi
+*.local
+*.identcache
+*.stat
+*.map
+*.tgs
+*.dsk
+*.~*
+*.bak
+
+# Win32/Win64 Output
+/Win32/Debug/
+/Win32/Release/
+/Win64/Debug/
+/Win64/Release/
+
+# Intermediates
+*.obj
+*.pch
+*.tmp
