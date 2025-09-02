@@ -215,7 +215,7 @@ end;
 
 function TConquestSave.IsSquadLine(const S: string): Boolean;
 begin
-  // Erlaubt führendes '{' und ein leeres zweites Anführungsfeld ("")
+  // Erlaubt fÃ¼hrendes '{' und ein leeres zweites AnfÃ¼hrungsfeld ("")
   Result := TRegEx.IsMatch(S, '"[^"]+"\s+"[^"]*"(?:\s+0x[0-9A-Fa-f]{4})*');
 end;
 
@@ -295,12 +295,12 @@ var
   M: TMatch;
   Prefix, Suffix, JoinUnits: string;
 begin
-  // Prefix = alles bis inkl. zweites Anführungsfeld
-  // Suffix = optional schließende '}'
+  // Prefix = alles bis inkl. zweites AnfÃ¼hrungsfeld
+  // Suffix = optional schlieÃŸende '}'
   M := TRegEx.Match(Line,
     '^(.*?"[^"]+"\s*"[^"]*")(?:\s+0x[0-9A-Fa-f]{4})*\s*(\}?)\s*$');
   if not M.Success then
-    // Fallback ohne ^/$ (zusätzliche Robustheit)
+    // Fallback ohne ^/$ (zusÃ¤tzliche Robustheit)
     M := TRegEx.Match(Line,
       '(.*?"[^"]+"\s*"[^"]*")(?:\s+0x[0-9A-Fa-f]{4})*\s*(\}?)');
   if not M.Success then

@@ -30,6 +30,7 @@ type
     SaveDialog1: TSaveDialog;
     LblBaseInfo: TLabel;
     LblTargetInfo: TLabel;
+    ChkOnlyHumans: TCheckBox;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
@@ -39,6 +40,7 @@ type
     procedure BtnExportCsvClick(Sender: TObject);
     procedure TreeBaseChange(Sender: TObject; Node: TTreeNode);
     procedure TreeTargetChange(Sender: TObject; Node: TTreeNode);
+    procedure ChkOnlyHumansClick(Sender: TObject);
   private
     FSave: TConquestSave;
     FAllSquadNames: TArray<string>;
@@ -50,6 +52,8 @@ type
     function SelectedSquadIndex(ATree: TTreeView): Integer;
     procedure UpdateInfoLabels;
     procedure ShowStatus(const Msg: string);
+    function IsEntityUnit(const UnitId: string): Boolean;
+    function CanMoveUnit(const UnitId: string): Boolean;
   public
   end;
 
@@ -83,6 +87,7 @@ procedure TFrmMain.SetControlsEnabled(AEnabled: Boolean);
 begin
   TreeBase.Enabled := AEnabled;
   TreeTarget.Enabled := AEnabled;
+  ChkOnlyHumans.Enabled := AEnabled;
   BtnTransfer.Enabled := AEnabled;
   BtnSwap.Enabled := AEnabled;
   BtnSaveAs.Enabled := AEnabled;
@@ -107,6 +112,27 @@ begin
   ATree.Items.Clear;
 end;
 
+function TFrmMain.IsEntityUnit(const UnitId: string): Boolean;
+var
+  UnitInfo: TUnitInfo;
+begin
+  Result := False;
+  try
+    UnitInfo := FSave.GetUnitInfo(UnitId);
+    Result := SameText(UnitInfo.Kind, 'Entity');
+  except
+    // Bei Fehlern nehmen wir an, dass es kein Entity ist
+    Result := False;
+  end;
+end;
+
+function TFrmMain.CanMoveUnit(const UnitId: string): Boolean;
+begin
+  Result := True;
+  if ChkOnlyHumans.Checked then
+    Result := not IsEntityUnit(UnitId);
+end;
+
 procedure TFrmMain.PopulateTrees;
 begin
   ClearTreeData(TreeBase);
@@ -123,11 +149,12 @@ end;
 procedure TFrmMain.PopulateTree(ATree: TTreeView);
 var
   I, J: Integer;
-  SquadNode: TTreeNode;
+  SquadNode, UnitNode: TTreeNode;
   Units: TArray<string>;
   Info: TNodeInfo;
   UnitInfo: TUnitInfo;
   UnitCaption: string;
+  IsEntity: Boolean;
 begin
   for I := 0 to Length(FAllSquadNames) - 1 do
   begin
@@ -140,7 +167,14 @@ begin
     Units := FSave.GetSquadMembers(I);
     for J := 0 to Length(Units) - 1 do
     begin
+      IsEntity := IsEntityUnit(Units[J]);
+
+      // Entity-Units bei aktivem Filter überspringen
+      if ChkOnlyHumans.Checked and IsEntity then
+        Continue;
+
       UnitCaption := Units[J];
+
       try
         UnitInfo := FSave.GetUnitInfo(Units[J]);
         if UnitInfo.Name <> '' then
@@ -153,7 +187,7 @@ begin
       Info.Kind := nkUnit;
       Info.SquadIndex := I;
       Info.UnitId := Units[J];
-      ATree.Items.AddChildObject(SquadNode, UnitCaption, Info);
+      UnitNode := ATree.Items.AddChildObject(SquadNode, UnitCaption, Info);
     end;
   end;
 end;
@@ -273,6 +307,13 @@ begin
     Exit;
   end;
 
+  // Prüfen ob Unit verschoben werden darf (nur bei deaktiviertem Filter nötig)
+  if ChkOnlyHumans.Checked and IsEntityUnit(BaseU.UnitId) then
+  begin
+    Application.MessageBox('Diese Unit ist eine Entity und bei aktivem Filter nicht sichtbar.', 'Hinweis', MB_ICONINFORMATION);
+    Exit;
+  end;
+
   TargetSquad := SelectedSquadIndex(TreeTarget);
   if TargetSquad < 0 then
   begin
@@ -312,6 +353,19 @@ begin
   if (not Assigned(A)) or (not Assigned(B)) then
   begin
     Application.MessageBox('Bitte links und rechts jeweils eine Unit auswählen.', 'Hinweis', MB_ICONINFORMATION);
+    Exit;
+  end;
+
+  // Prüfen ob beide Units verschoben werden dürfen (nur bei deaktiviertem Filter nötig)
+  if ChkOnlyHumans.Checked and IsEntityUnit(A.UnitId) then
+  begin
+    Application.MessageBox('Die linke Unit ist eine Entity und bei aktivem Filter nicht sichtbar.', 'Hinweis', MB_ICONINFORMATION);
+    Exit;
+  end;
+
+  if ChkOnlyHumans.Checked and IsEntityUnit(B.UnitId) then
+  begin
+    Application.MessageBox('Die rechte Unit ist eine Entity und bei aktivem Filter nicht sichtbar.', 'Hinweis', MB_ICONINFORMATION);
     Exit;
   end;
 
@@ -376,6 +430,13 @@ begin
   finally
     Csv.Free;
   end;
+end;
+
+procedure TFrmMain.ChkOnlyHumansClick(Sender: TObject);
+begin
+  // Bei Änderung der Checkbox die TreeViews neu laden
+  if FSave <> nil then
+    PopulateTrees;
 end;
 
 procedure TFrmMain.ShowStatus(const Msg: string);
