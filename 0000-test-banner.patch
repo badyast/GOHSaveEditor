@@ -1,0 +1,11 @@
+diff --git a/MainForm.pas b/MainForm.pas
+--- a/MainForm.pas
++++ b/MainForm.pas
+@@ -267,7 +267,7 @@
+ procedure TFrmMain.ShowStatus(const Msg: string);
+ begin
+-  Caption := 'GOH Savegame Editor – ' + Msg;
++  Caption := 'GOH Savegame Editor [TEST] – ' + Msg;
+ end;
+ 
+ end.

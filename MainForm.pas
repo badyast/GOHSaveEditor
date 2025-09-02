@@ -1,5 +1,4 @@
-﻿{$CODEPAGE UTF8}
-unit MainForm;
+﻿unit MainForm;
 
 interface
 

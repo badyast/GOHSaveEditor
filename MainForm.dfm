@@ -1,34 +1,59 @@
-﻿object FrmMain: TFrmMain
+object FrmMain: TFrmMain
+  Left = 0
+  Top = 0
   Caption = 'GOH Savegame Editor'
   ClientHeight = 420
   ClientWidth = 860
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -12
+  Font.Name = 'Segoe UI'
+  Font.Style = []
   Position = poScreenCenter
   OnCreate = FormCreate
   OnDestroy = FormDestroy
+  TextHeight = 15
+  object LblSave: TLabel
+    Left = 152
+    Top = 20
+    Width = 51
+    Height = 15
+    Caption = '(kein File)'
+  end
+  object LblBaseInfo: TLabel
+    Left = 16
+    Top = 344
+    Width = 124
+    Height = 15
+    Caption = 'Quelle: (keine Auswahl)'
+  end
+  object LblTargetInfo: TLabel
+    Left = 444
+    Top = 344
+    Width = 109
+    Height = 15
+    Caption = 'Ziel: (keine Auswahl)'
+  end
   object BtnOpen: TButton
     Left = 16
     Top = 16
     Width = 120
     Height = 25
-    Caption = 'Save laden…'
+    Caption = 'Save laden'#8230
+    TabOrder = 0
     OnClick = BtnOpenClick
-  end
-  object LblSave: TLabel
-    Left = 152
-    Top = 20
-    Width = 500
-    Height = 17
-    Caption = '(kein File)'
   end
   object TreeBase: TTreeView
     Left = 16
     Top = 56
     Width = 400
     Height = 280
+    HideSelection = False
     Indent = 19
     ReadOnly = True
-    HideSelection = False
     RowSelect = True
+    TabOrder = 1
     OnChange = TreeBaseChange
   end
   object TreeTarget: TTreeView
@@ -36,32 +61,20 @@
     Top = 56
     Width = 400
     Height = 280
+    HideSelection = False
     Indent = 19
     ReadOnly = True
-    HideSelection = False
     RowSelect = True
+    TabOrder = 2
     OnChange = TreeTargetChange
-  end
-  object LblBaseInfo: TLabel
-    Left = 16
-    Top = 344
-    Width = 400
-    Height = 17
-    Caption = 'Quelle: (keine Auswahl)'
-  end
-  object LblTargetInfo: TLabel
-    Left = 444
-    Top = 344
-    Width = 400
-    Height = 17
-    Caption = 'Ziel: (keine Auswahl)'
   end
   object BtnTransfer: TButton
     Left = 16
     Top = 376
     Width = 140
     Height = 25
-    Caption = 'Unit übertragen →'
+    Caption = 'Unit '#252'bertragen '#8594
+    TabOrder = 3
     OnClick = BtnTransferClick
   end
   object BtnSwap: TButton
@@ -69,7 +82,8 @@
     Top = 376
     Width = 140
     Height = 25
-    Caption = 'Units tauschen ↔'
+    Caption = 'Units tauschen '#8596
+    TabOrder = 4
     OnClick = BtnSwapClick
   end
   object BtnSaveAs: TButton
@@ -77,7 +91,8 @@
     Top = 376
     Width = 140
     Height = 25
-    Caption = 'Speichern als…'
+    Caption = 'Speichern als'#8230
+    TabOrder = 5
     OnClick = BtnSaveAsClick
   end
   object BtnExportCsv: TButton
@@ -85,13 +100,14 @@
     Top = 376
     Width = 140
     Height = 25
-    Caption = 'CSV exportieren…'
+    Caption = 'CSV exportieren'#8230
+    TabOrder = 6
     OnClick = BtnExportCsvClick
   end
   object OpenDialog1: TOpenDialog
     Options = [ofFileMustExist, ofEnableSizing]
   end
   object SaveDialog1: TSaveDialog
-    Options = [ofOverWritePrompt, ofEnableSizing]
+    Options = [ofOverwritePrompt, ofEnableSizing]
   end
 end
