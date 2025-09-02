@@ -14,6 +14,10 @@ __recovery/
 *.dsk
 *.~*
 *.bak
+*.exe
+*.dll
+*.res
+*.map
 
 # Win32/Win64 Output
 /Win32/Debug/
