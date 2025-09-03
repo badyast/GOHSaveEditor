@@ -104,6 +104,17 @@ object FrmMain: TFrmMain
     TabOrder = 6
     OnClick = BtnExportCsvClick
   end
+  object ChkOnlyHumans: TCheckBox
+    Left = 444
+    Top = 32
+    Width = 200
+    Height = 17
+    Caption = 'Nur Menschen verschieben'
+    Checked = True
+    State = cbChecked
+    TabOrder = 7
+    OnClick = ChkOnlyHumansClick
+  end
   object OpenDialog1: TOpenDialog
     Options = [ofFileMustExist, ofEnableSizing]
   end
