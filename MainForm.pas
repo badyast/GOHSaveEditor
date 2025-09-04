@@ -41,6 +41,8 @@ type
     procedure TreeBaseChange(Sender: TObject; Node: TTreeNode);
     procedure TreeTargetChange(Sender: TObject; Node: TTreeNode);
     procedure ChkOnlyHumansClick(Sender: TObject);
+    procedure TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
+      State: TCustomDrawState; var DefaultDraw: Boolean);
   private
     FSave: TConquestSave;
     FAllSquadNames: TArray<string>;
@@ -52,8 +54,9 @@ type
     function SelectedSquadIndex(ATree: TTreeView): Integer;
     procedure UpdateInfoLabels;
     procedure ShowStatus(const Msg: string);
+    function IsEmptySlot(const UnitId: string): Boolean;
+    function IsValidUnit(const UnitId: string): Boolean;
     function IsEntityUnit(const UnitId: string): Boolean;
-    function CanMoveUnit(const UnitId: string): Boolean;
   public
   end;
 
@@ -74,6 +77,10 @@ begin
 
   LblBaseInfo.Caption := 'Quelle: (keine Auswahl)';
   LblTargetInfo.Caption := 'Ziel: (keine Auswahl)';
+
+  // CustomDraw Event Handler zuweisen
+  TreeBase.OnCustomDrawItem := TreeCustomDrawItem;
+  TreeTarget.OnCustomDrawItem := TreeCustomDrawItem;
 end;
 
 procedure TFrmMain.FormDestroy(Sender: TObject);
@@ -112,11 +119,26 @@ begin
   ATree.Items.Clear;
 end;
 
+function TFrmMain.IsEmptySlot(const UnitId: string): Boolean;
+begin
+  Result := SameText(UnitId, '0xffffffff');
+end;
+
+function TFrmMain.IsValidUnit(const UnitId: string): Boolean;
+begin
+  Result := not IsEmptySlot(UnitId);
+end;
+
 function TFrmMain.IsEntityUnit(const UnitId: string): Boolean;
 var
   UnitInfo: TUnitInfo;
 begin
   Result := False;
+
+  // Leere Slots sind keine Entities
+  if IsEmptySlot(UnitId) then
+    Exit(False);
+
   try
     UnitInfo := FSave.GetUnitInfo(UnitId);
     Result := SameText(UnitInfo.Kind, 'Entity');
@@ -124,13 +146,6 @@ begin
     // Bei Fehlern nehmen wir an, dass es kein Entity ist
     Result := False;
   end;
-end;
-
-function TFrmMain.CanMoveUnit(const UnitId: string): Boolean;
-begin
-  Result := True;
-  if ChkOnlyHumans.Checked then
-    Result := not IsEntityUnit(UnitId);
 end;
 
 procedure TFrmMain.PopulateTrees;
@@ -154,7 +169,7 @@ var
   Info: TNodeInfo;
   UnitInfo: TUnitInfo;
   UnitCaption: string;
-  IsEntity: Boolean;
+  IsEntity, IsEmpty: Boolean;
 begin
   for I := 0 to Length(FAllSquadNames) - 1 do
   begin
@@ -167,20 +182,31 @@ begin
     Units := FSave.GetSquadMembers(I);
     for J := 0 to Length(Units) - 1 do
     begin
-      IsEntity := IsEntityUnit(Units[J]);
+      IsEmpty := IsEmptySlot(Units[J]);
 
-      // Entity-Units bei aktivem Filter überspringen
-      if ChkOnlyHumans.Checked and IsEntity then
-        Continue;
+      if IsEmpty then
+      begin
+        // Leere Slots als "Leer" anzeigen
+        UnitCaption := Units[J] + ' – [Leer]';
+        IsEntity := False;
+      end
+      else
+      begin
+        IsEntity := IsEntityUnit(Units[J]);
 
-      UnitCaption := Units[J];
+        // Entity-Units bei aktivem Filter überspringen
+        if ChkOnlyHumans.Checked and IsEntity then
+          Continue;
 
-      try
-        UnitInfo := FSave.GetUnitInfo(Units[J]);
-        if UnitInfo.Name <> '' then
-          UnitCaption := Units[J] + ' – ' + UnitInfo.Name;
-      except
-        // Fallback: nur ID anzeigen
+        UnitCaption := Units[J];
+
+        try
+          UnitInfo := FSave.GetUnitInfo(Units[J]);
+          if UnitInfo.Name <> '' then
+            UnitCaption := Units[J] + ' – ' + UnitInfo.Name;
+        except
+          // Fallback: nur ID anzeigen
+        end;
       end;
 
       Info := TNodeInfo.Create;
@@ -247,13 +273,18 @@ begin
   U := SelectedUnitInfo(TreeBase);
   if Assigned(U) then
   begin
-    S := S + Format('Squad %d, Unit %s',[U.SquadIndex, U.UnitId]);
-    try
-      Info := FSave.GetUnitInfo(U.UnitId);
-      if (Info.Kind <> '') or (Info.Name <> '') then
-        S := S + Format(' (%s; %s)', [Info.Kind, Info.Name]);
-    except
-      // ignore
+    if IsEmptySlot(U.UnitId) then
+      S := S + Format('Squad %d, [Leer]',[U.SquadIndex])
+    else
+    begin
+      S := S + Format('Squad %d, Unit %s',[U.SquadIndex, U.UnitId]);
+      try
+        Info := FSave.GetUnitInfo(U.UnitId);
+        if (Info.Kind <> '') or (Info.Name <> '') then
+          S := S + Format(' (%s; %s)', [Info.Kind, Info.Name]);
+      except
+        // ignore
+      end;
     end;
   end
   else
@@ -265,13 +296,18 @@ begin
   U := SelectedUnitInfo(TreeTarget);
   if Assigned(U) then
   begin
-    S := S + Format('Squad %d, Unit %s',[U.SquadIndex, U.UnitId]);
-    try
-      Info := FSave.GetUnitInfo(U.UnitId);
-      if (Info.Kind <> '') or (Info.Name <> '') then
-        S := S + Format(' (%s; %s)', [Info.Kind, Info.Name]);
-    except
-      // ignore
+    if IsEmptySlot(U.UnitId) then
+      S := S + Format('Squad %d, [Leer]',[U.SquadIndex])
+    else
+    begin
+      S := S + Format('Squad %d, Unit %s',[U.SquadIndex, U.UnitId]);
+      try
+        Info := FSave.GetUnitInfo(U.UnitId);
+        if (Info.Kind <> '') or (Info.Name <> '') then
+          S := S + Format(' (%s; %s)', [Info.Kind, Info.Name]);
+      except
+        // ignore
+      end;
     end;
   end
   else
@@ -295,53 +331,52 @@ begin
   UpdateInfoLabels;
 end;
 
-procedure TFrmMain.BtnTransferClick(Sender: TObject);
-var
-  BaseU: TNodeInfo;
-  TargetSquad: Integer;
+procedure TFrmMain.ChkOnlyHumansClick(Sender: TObject);
 begin
-  BaseU := SelectedUnitInfo(TreeBase);
-  if not Assigned(BaseU) then
-  begin
-    Application.MessageBox('Bitte links eine Unit auswählen.', 'Hinweis', MB_ICONINFORMATION);
-    Exit;
-  end;
-
-  // Prüfen ob Unit verschoben werden darf (nur bei deaktiviertem Filter nötig)
-  if ChkOnlyHumans.Checked and IsEntityUnit(BaseU.UnitId) then
-  begin
-    Application.MessageBox('Diese Unit ist eine Entity und bei aktivem Filter nicht sichtbar.', 'Hinweis', MB_ICONINFORMATION);
-    Exit;
-  end;
-
-  TargetSquad := SelectedSquadIndex(TreeTarget);
-  if TargetSquad < 0 then
-  begin
-    // Wenn rechts eine Unit ausgewählt ist, deren Squad nehmen
-    if Assigned(SelectedUnitInfo(TreeTarget)) then
-      TargetSquad := SelectedUnitInfo(TreeTarget).SquadIndex;
-  end;
-
-  if TargetSquad < 0 then
-  begin
-    Application.MessageBox('Bitte rechts ein Ziel-Squad (oder eine Unit desselben) auswählen.', 'Hinweis', MB_ICONINFORMATION);
-    Exit;
-  end;
-
-  if TargetSquad = BaseU.SquadIndex then
-  begin
-    Application.MessageBox('Quelle und Ziel sind identisch.', 'Hinweis', MB_ICONINFORMATION);
-    Exit;
-  end;
-
-  try
-    FSave.MoveUnit(BaseU.SquadIndex, BaseU.UnitId, TargetSquad);
+  // Bei Änderung der Checkbox die TreeViews neu laden
+  if Assigned(FSave) then
     PopulateTrees;
-    ShowStatus('Unit übertragen.');
-  except
-    on E: Exception do
-      Application.MessageBox(PChar('Fehler beim Übertragen: ' + E.Message), 'Fehler', MB_ICONERROR);
+end;
+
+procedure TFrmMain.TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
+  State: TCustomDrawState; var DefaultDraw: Boolean);
+var
+  Info: TNodeInfo;
+  Canvas: TCanvas;
+begin
+  DefaultDraw := True;
+  Canvas := Sender.Canvas;
+
+  if Assigned(Node.Data) then
+  begin
+    Info := TNodeInfo(Node.Data);
+    if Info.Kind = nkUnit then
+    begin
+      if IsEmptySlot(Info.UnitId) then
+      begin
+        // Leere Slots ausgegraut und kursiv
+        Canvas.Font.Color := clGray;
+        Canvas.Font.Style := [fsItalic];
+      end
+      else
+      begin
+        // Normale Units
+        Canvas.Font.Color := clWindowText;
+        Canvas.Font.Style := [];
+      end;
+    end
+    else
+    begin
+      // Squad-Knoten normal darstellen
+      Canvas.Font.Color := clWindowText;
+      Canvas.Font.Style := [];
+    end;
   end;
+end;
+
+procedure TFrmMain.BtnTransferClick(Sender: TObject);
+begin
+  Application.MessageBox('Transfer-Funktion ist deaktiviert. Verwenden Sie "Tauschen" um Units mit leeren Plätzen zu vertauschen.', 'Hinweis', MB_ICONINFORMATION);
 end;
 
 procedure TFrmMain.BtnSwapClick(Sender: TObject);
@@ -354,6 +389,19 @@ begin
   begin
     Application.MessageBox('Bitte links und rechts jeweils eine Unit auswählen.', 'Hinweis', MB_ICONINFORMATION);
     Exit;
+  end;
+
+  // Prüfen ob Quell-Unit verschoben werden kann
+  if IsEmptySlot(A.UnitId) then
+  begin
+    //Application.MessageBox('Die linke Auswahl ist ein leerer Slot.', 'Hinweis', MB_ICONINFORMATION);
+    //Exit;
+  end;
+
+  if IsEmptySlot(B.UnitId) then
+  begin
+    //Application.MessageBox('Die rechte Auswahl ist ein leerer Slot.', 'Hinweis', MB_ICONINFORMATION);
+    //Exit;
   end;
 
   // Prüfen ob beide Units verschoben werden dürfen (nur bei deaktiviertem Filter nötig)
@@ -416,8 +464,13 @@ begin
       for J := 0 to Length(Units) - 1 do
       begin
         try
-          Info := FSave.GetUnitInfo(Units[J]);
-          Line := Format('%s;%s;%s;%s',[FAllSquadNames[I], Units[J], Info.Kind, Info.Name]);
+          if IsEmptySlot(Units[J]) then
+            Line := Format('%s;%s;%s;%s',[FAllSquadNames[I], Units[J], 'Empty', '[Leer]'])
+          else
+          begin
+            Info := FSave.GetUnitInfo(Units[J]);
+            Line := Format('%s;%s;%s;%s',[FAllSquadNames[I], Units[J], Info.Kind, Info.Name]);
+          end;
         except
           on E: Exception do
             Line := Format('%s;%s;%s;%s',[FAllSquadNames[I], Units[J], '?', '']);
@@ -430,13 +483,6 @@ begin
   finally
     Csv.Free;
   end;
-end;
-
-procedure TFrmMain.ChkOnlyHumansClick(Sender: TObject);
-begin
-  // Bei Änderung der Checkbox die TreeViews neu laden
-  if FSave <> nil then
-    PopulateTrees;
 end;
 
 procedure TFrmMain.ShowStatus(const Msg: string);

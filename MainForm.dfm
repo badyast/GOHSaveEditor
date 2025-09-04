@@ -58,9 +58,9 @@ object FrmMain: TFrmMain
   end
   object TreeTarget: TTreeView
     Left = 444
-    Top = 56
+    Top = 80
     Width = 400
-    Height = 280
+    Height = 256
     HideSelection = False
     Indent = 19
     ReadOnly = True
@@ -73,7 +73,8 @@ object FrmMain: TFrmMain
     Top = 376
     Width = 140
     Height = 25
-    Caption = 'Unit '#252'bertragen '#8594
+    Caption = '(Transfer deaktiviert)'
+    Enabled = False
     TabOrder = 3
     OnClick = BtnTransferClick
   end

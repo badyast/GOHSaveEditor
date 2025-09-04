@@ -1,4 +1,4 @@
-unit ConquestSave;
+﻿unit ConquestSave;
 {
   Delphi 12 class that mirrors the core functionality of Editor.py for
   Gates of Hell Conquest save editing.
@@ -216,7 +216,7 @@ end;
 function TConquestSave.IsSquadLine(const S: string): Boolean;
 begin
   // Erlaubt führendes '{' und ein leeres zweites Anführungsfeld ("")
-  Result := TRegEx.IsMatch(S, '"[^"]+"\s+"[^"]*"(?:\s+0x[0-9A-Fa-f]{4})*');
+  Result := TRegEx.IsMatch(S, '"[^"]+"\s+"[^"]*"(?:\s+0x[0-9A-Fa-f]{4,8})*');
 end;
 
 function TConquestSave.SquadLineIndices: TArray<Integer>;
@@ -278,7 +278,7 @@ begin
     CleanLine := CleanLine.TrimRight([' ', #9])
       .Substring(0, CleanLine.TrimRight([' ', #9]).Length - 1);
 
-  M := TRegEx.Matches(CleanLine, '0x[0-9A-Fa-f]{4}');
+  M := TRegEx.Matches(CleanLine, '0x[0-9A-Fa-f]{4,8}');
   L := TList<string>.Create;
   try
     for I := 0 to M.Count - 1 do
@@ -298,11 +298,11 @@ begin
   // Prefix = alles bis inkl. zweites Anführungsfeld
   // Suffix = optional schließende '}'
   M := TRegEx.Match(Line,
-    '^(.*?"[^"]+"\s*"[^"]*")(?:\s+0x[0-9A-Fa-f]{4})*\s*(\}?)\s*$');
+    '^(.*?"[^"]+"\s*"[^"]*")(?:\s+0x[0-9A-Fa-f]{4,8})*\s*(\}?)\s*$');
   if not M.Success then
     // Fallback ohne ^/$ (zusätzliche Robustheit)
     M := TRegEx.Match(Line,
-      '(.*?"[^"]+"\s*"[^"]*")(?:\s+0x[0-9A-Fa-f]{4})*\s*(\}?)');
+      '(.*?"[^"]+"\s*"[^"]*")(?:\s+0x[0-9A-Fa-f]{4,8})*\s*(\}?)');
   if not M.Success then
     raise EConquestSave.Create('Invalid squad line format: ' + Line);
 

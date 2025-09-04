@@ -18,6 +18,7 @@ __recovery/
 *.dll
 *.res
 *.map
+*.rsm
 
 # Win32/Win64 Output
 /Win32/Debug/
