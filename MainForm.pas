@@ -57,6 +57,7 @@ type
     function IsEmptySlot(const UnitId: string): Boolean;
     function IsValidUnit(const UnitId: string): Boolean;
     function IsEntityUnit(const UnitId: string): Boolean;
+    procedure RestoreFocusToSquad(ATree: TTreeView; ASquadIndex: Integer);
   public
   end;
 
@@ -374,6 +375,33 @@ begin
   end;
 end;
 
+procedure TFrmMain.RestoreFocusToSquad(ATree: TTreeView; ASquadIndex: Integer);
+var
+  I: Integer;
+  Node: TTreeNode;
+  Info: TNodeInfo;
+begin
+  if (ASquadIndex < 0) or (ASquadIndex >= Length(FAllSquadNames)) then
+    Exit;
+
+  // Suche den Squad-Knoten mit dem passenden Index
+  for I := 0 to ATree.Items.Count - 1 do
+  begin
+    Node := ATree.Items[I];
+    if Assigned(Node.Data) then
+    begin
+      Info := TNodeInfo(Node.Data);
+      if (Info.Kind = nkSquad) and (Info.SquadIndex = ASquadIndex) then
+      begin
+        // Fokus setzen und Squad expandieren
+        ATree.Selected := Node;
+        Node.Expand(False);
+        Exit;
+      end;
+    end;
+  end;
+end;
+
 procedure TFrmMain.BtnTransferClick(Sender: TObject);
 begin
   Application.MessageBox('Transfer-Funktion ist deaktiviert. Verwenden Sie "Tauschen" um Units mit leeren Plätzen zu vertauschen.', 'Hinweis', MB_ICONINFORMATION);
@@ -382,6 +410,7 @@ end;
 procedure TFrmMain.BtnSwapClick(Sender: TObject);
 var
   A, B: TNodeInfo;
+  BaseSquadIndex, TargetSquadIndex: Integer;
 begin
   A := SelectedUnitInfo(TreeBase);
   B := SelectedUnitInfo(TreeTarget);
@@ -391,29 +420,20 @@ begin
     Exit;
   end;
 
-  // Prüfen ob Quell-Unit verschoben werden kann
-  if IsEmptySlot(A.UnitId) then
-  begin
-    //Application.MessageBox('Die linke Auswahl ist ein leerer Slot.', 'Hinweis', MB_ICONINFORMATION);
-    //Exit;
-  end;
+  // Squad-Indizes für spätere Fokus-Wiederherstellung speichern
+  BaseSquadIndex := A.SquadIndex;
+  TargetSquadIndex := B.SquadIndex;
 
-  if IsEmptySlot(B.UnitId) then
+  // Prüfen ob beide Units verschoben werden dürfen (nur bei aktivem Filter)
+  if ChkOnlyHumans.Checked and IsValidUnit(A.UnitId) and IsEntityUnit(A.UnitId) then
   begin
-    //Application.MessageBox('Die rechte Auswahl ist ein leerer Slot.', 'Hinweis', MB_ICONINFORMATION);
-    //Exit;
-  end;
-
-  // Prüfen ob beide Units verschoben werden dürfen (nur bei deaktiviertem Filter nötig)
-  if ChkOnlyHumans.Checked and IsEntityUnit(A.UnitId) then
-  begin
-    Application.MessageBox('Die linke Unit ist eine Entity und bei aktivem Filter nicht sichtbar.', 'Hinweis', MB_ICONINFORMATION);
+    Application.MessageBox('Die linke Unit ist eine Entity und kann bei aktivem Filter nicht verschoben werden.', 'Hinweis', MB_ICONINFORMATION);
     Exit;
   end;
 
-  if ChkOnlyHumans.Checked and IsEntityUnit(B.UnitId) then
+  if ChkOnlyHumans.Checked and IsValidUnit(B.UnitId) and IsEntityUnit(B.UnitId) then
   begin
-    Application.MessageBox('Die rechte Unit ist eine Entity und bei aktivem Filter nicht sichtbar.', 'Hinweis', MB_ICONINFORMATION);
+    Application.MessageBox('Die rechte Unit ist eine Entity und kann bei aktivem Filter nicht verschoben werden.', 'Hinweis', MB_ICONINFORMATION);
     Exit;
   end;
 
@@ -426,6 +446,11 @@ begin
   try
     FSave.ExchangeUnits(A.SquadIndex, A.UnitId, B.SquadIndex, B.UnitId);
     PopulateTrees;
+
+    // Fokus auf die vorherigen Squads wiederherstellen
+    RestoreFocusToSquad(TreeBase, BaseSquadIndex);
+    RestoreFocusToSquad(TreeTarget, TargetSquadIndex);
+
     ShowStatus('Units getauscht.');
   except
     on E: Exception do
