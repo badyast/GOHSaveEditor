@@ -57,10 +57,10 @@ object FrmMain: TFrmMain
     OnChange = TreeBaseChange
   end
   object TreeTarget: TTreeView
-    Left = 444
-    Top = 80
+    Left = 452
+    Top = 56
     Width = 400
-    Height = 256
+    Height = 282
     HideSelection = False
     Indent = 19
     ReadOnly = True
@@ -76,6 +76,7 @@ object FrmMain: TFrmMain
     Caption = '(Transfer deaktiviert)'
     Enabled = False
     TabOrder = 3
+    Visible = False
     OnClick = BtnTransferClick
   end
   object BtnSwap: TButton
@@ -106,8 +107,8 @@ object FrmMain: TFrmMain
     OnClick = BtnExportCsvClick
   end
   object ChkOnlyHumans: TCheckBox
-    Left = 444
-    Top = 32
+    Left = 452
+    Top = 20
     Width = 200
     Height = 17
     Caption = 'Nur Menschen verschieben'

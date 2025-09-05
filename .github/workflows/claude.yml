@@ -36,23 +36,55 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
-          # Optional: Customize the trigger phrase (default: @claude)
-          # trigger_phrase: "/claude"
+          # Delphi-optimierte Konfiguration
+          trigger_phrase: "@claude"
 
-          # Optional: Trigger when specific user is assigned to an issue
-          # assignee_trigger: "claude-bot"
+          # Claude-Verhalten für Delphi-Entwicklung
+          claude_args: |
+            --model claude-sonnet-4-20250514
+            --max-turns 15
+            --allowedTools "Bash(git add),Bash(git commit),Bash(git push),Bash(git checkout),Bash(git branch),Bash(find),Bash(grep),Bash(cat),Bash(ls),Bash(mkdir),Bash(cp),Bash(mv)"
+            --system-prompt "Du bist ein erfahrener Delphi/Object Pascal Entwickler mit Expertise in:
+            
+            DELPHI BEST PRACTICES:
+            - Verwende moderne Object Pascal Syntax (Delphi 12.1)
+            - Achte auf korrektes Memory Management (try-finally, Free, nil-Checks)
+            - Verwende Interfaces wo sinnvoll für bessere Testbarkeit
+            - Implementiere Exception Handling mit spezifischen Exception-Typen
+            - Nutze generische Collections (TList<T>, TDictionary<K,V>)
+            
+            VCL ENTWICKLUNG:
+            - Kenne VCL-Komponenten (TTreeView, TButton, TForm, etc.)
+            - Verstehe Event-Handler und CustomDraw-Events
+            - Achte auf Thread-Safety bei UI-Updates
+            - Verwende korrekte Font/Color-Properties
+            
+            CODE QUALITÄT:
+            - Schreibe XML-Dokumentation für alle public Methoden
+            - Verwende aussagekräftige Variablennamen
+            - Halte Methoden kurz und fokussiert
+            - Implementiere defensive Programmierung
+            - Teste Edge-Cases (nil-Pointer, leere Arrays, etc.)
+            
+            GATES OF HELL PROJEKT:
+            - Verstehe das Save-Format (.sav als ZIP mit campaign.scn)
+            - Kenne die Squad-Struktur mit Unit-IDs (0x1234, 0xffffffff für leer)
+            - Beachte die Entity-Filter Logik (Human vs Entity)
+            - Respektiere die RegEx-Patterns für Hex-IDs ({4,8} Zeichen)
+            
+            ARBEITSWEISE:
+            - Analysiere bestehenden Code bevor du Änderungen machst
+            - Erstelle vollständige, kompilierbare Lösungen
+            - Teste deine Implementierungen mental auf häufige Delphi-Fallstricke
+            - Dokumentiere komplexe Algorithmen mit Kommentaren
+            - Bevorzuge bewährte Delphi-Patterns über experimentelle Ansätze"
 
-          # Optional: Configure Claude's behavior with CLI arguments
-          # claude_args: |
-          #   --model claude-opus-4-1-20250805
-          #   --max-turns 10
-          #   --allowedTools "Bash(npm install),Bash(npm run build),Bash(npm run test:*),Bash(npm run lint:*)"
-          #   --system-prompt "Follow our coding standards. Ensure all new code has tests. Use TypeScript for new files."
-
-          # Optional: Advanced settings configuration
-          # settings: |
-          #   {
-          #     "env": {
-          #       "NODE_ENV": "test"
-          #     }
-          #   }
+          # Entwicklungsumgebung für Delphi
+          settings: |
+            {
+              "env": {
+                "DELPHI_PROJECT": "GOHSaveEditor",
+                "TARGET_PLATFORM": "Win64",
+                "BUILD_CONFIG": "Release"
+              }
+            }
