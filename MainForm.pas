@@ -31,16 +31,65 @@ type
     LblBaseInfo: TLabel;
     LblTargetInfo: TLabel;
     ChkOnlyHumans: TCheckBox;
+    /// <summary>
+    /// Initialisiert das Hauptformular und lädt die grundlegenden Einstellungen
+    /// </summary>
+    /// <param name="Sender">Das auslösende Objekt</param>
     procedure FormCreate(Sender: TObject);
+    /// <summary>
+    /// Räumt Ressourcen auf und gibt Speicher frei beim Schließen des Formulars
+    /// </summary>
+    /// <param name="Sender">Das auslösende Objekt</param>
     procedure FormDestroy(Sender: TObject);
+    /// <summary>
+    /// Lädt einen Gates of Hell Spielstand aus einer .sav Datei
+    /// </summary>
+    /// <param name="Sender">Das auslösende Objekt</param>
     procedure BtnOpenClick(Sender: TObject);
+    /// <summary>
+    /// Behandelt Transfer-Aktionen (derzeit deaktiviert)
+    /// </summary>
+    /// <param name="Sender">Das auslösende Objekt</param>
     procedure BtnTransferClick(Sender: TObject);
+    /// <summary>
+    /// Tauscht zwei ausgewählte Units zwischen den Squads
+    /// </summary>
+    /// <param name="Sender">Das auslösende Objekt</param>
     procedure BtnSwapClick(Sender: TObject);
+    /// <summary>
+    /// Speichert den geänderten Spielstand unter einem neuen Dateinamen
+    /// </summary>
+    /// <param name="Sender">Das auslösende Objekt</param>
     procedure BtnSaveAsClick(Sender: TObject);
+    /// <summary>
+    /// Exportiert alle Squad-Informationen und Units in eine CSV-Datei
+    /// </summary>
+    /// <param name="Sender">Das auslösende Objekt</param>
     procedure BtnExportCsvClick(Sender: TObject);
+    /// <summary>
+    /// Behandelt Änderungen der Auswahl im Basis-TreeView
+    /// </summary>
+    /// <param name="Sender">Das auslösende TreeView-Objekt</param>
+    /// <param name="Node">Der neu ausgewählte TreeNode</param>
     procedure TreeBaseChange(Sender: TObject; Node: TTreeNode);
+    /// <summary>
+    /// Behandelt Änderungen der Auswahl im Ziel-TreeView
+    /// </summary>
+    /// <param name="Sender">Das auslösende TreeView-Objekt</param>
+    /// <param name="Node">Der neu ausgewählte TreeNode</param>
     procedure TreeTargetChange(Sender: TObject; Node: TTreeNode);
+    /// <summary>
+    /// Filtert die Anzeige auf nur menschliche Units (keine Entities)
+    /// </summary>
+    /// <param name="Sender">Das auslösende CheckBox-Objekt</param>
     procedure ChkOnlyHumansClick(Sender: TObject);
+    /// <summary>
+    /// Behandelt die benutzerdefinierte Darstellung von TreeView-Items
+    /// </summary>
+    /// <param name="Sender">Das auslösende TreeView-Objekt</param>
+    /// <param name="Node">Der zu zeichnende TreeNode</param>
+    /// <param name="State">Der aktuelle Darstellungsstatus</param>
+    /// <param name="DefaultDraw">Gibt an, ob die Standard-Darstellung verwendet werden soll</param>
     procedure TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
       State: TCustomDrawState; var DefaultDraw: Boolean);
   private
