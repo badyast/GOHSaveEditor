@@ -7,6 +7,7 @@
   - Load a .sav (zip) file, extract campaign.scn + status
   - Parse CampaignSquads block to read squad names and unit IDs
   - Read unit info (Human/Entity, Unit name) by UnitId
+  - Read detailed unit information (veterancy, kills, score, inventory)
   - Move a unit to another squad
   - Exchange two units between squads
   - Repack the .sav using Deflate compression
@@ -35,6 +36,32 @@ type
     Name: string; // Unit name (unquoted)
   end;
 
+  TInventoryItem = record
+    ItemName: string;
+    ItemType: string; // "ammo", "grenade", etc.
+    Quantity: Integer;
+    Cell: string; // z.B. "cell 0 0"
+    IsUserItem: Boolean; // z.B. {user "head"}
+  end;
+
+  TUnitDetails = record
+    UnitId: string;
+    Kind: string; // 'Human' or 'Entity'
+    UnitType: string; // z.B. "mp/fin/mid/officer"
+    Name: string; // Unit name
+    Position: string; // z.B. "-136.08 2685.79"
+    Veterancy: Integer; // 0-3
+    Score: Double;
+    InfantryKills: Integer;
+    MID: Integer;
+    NameId1: Integer; // Erste NameId
+    NameId2: Integer; // Zweite NameId
+    LastItem: string;
+    LastThrowItem: string;
+    FsmState: string;
+    Inventory: TArray<TInventoryItem>;
+  end;
+
   TConquestSave = class
   private
     FSaveFile: string; // Path to the original .sav file
@@ -57,6 +84,9 @@ type
       const NewUnitIds: TArray<string>): string;
     function AppendUnitIdToSquadLine(const Line, UnitId: string): string;
     function RemoveUnitIdFromSquadLine(const Line, UnitId: string): string;
+
+    // Unit detail parsing
+    function ParseInventory(const UnitId: string): TArray<TInventoryItem>;
   public
     constructor Create;
     destructor Destroy; override;
@@ -71,6 +101,7 @@ type
     function GetSquadNames: TArray<string>;
     function GetSquadMembers(SquadIndex: Integer): TArray<string>;
     function GetUnitInfo(const UnitId: string): TUnitInfo;
+    function GetUnitDetails(const UnitId: string): TUnitDetails;
 
     // Edits
     procedure MoveUnit(BaseSquadIndex: Integer; const UnitId: string;
@@ -400,6 +431,138 @@ begin
     raise EConquestSave.Create('Unit not found by id: ' + UnitId);
   Result.Kind := M.Groups[1].Value;
   Result.Name := M.Groups[2].Value;
+end;
+
+function TConquestSave.ParseInventory(const UnitId: string): TArray<TInventoryItem>;
+var
+  Text: string;
+  M, ItemMatch: TMatch;
+  Items: TList<TInventoryItem>;
+  Item: TInventoryItem;
+  InvBlock: string;
+  ItemRegex: string;
+begin
+  Items := TList<TInventoryItem>.Create;
+  try
+    Text := ReadAllText;
+
+    // Finde den Inventory-Block für diese Unit
+    M := TRegEx.Match(Text, '\{Inventory\s+' + TRegEx.Escape(UnitId) +
+                      '\s*\{box(.*?)\}\s*\}', [roSingleLine]);
+
+    if M.Success then
+    begin
+      InvBlock := M.Groups[1].Value;
+
+      // Parse einzelne Items
+      // Format: {item "itemname" "type"? quantity? {cell x y}{user "part"}?}
+      ItemRegex := '\{item\s+"([^"]+)"(?:\s+"([^"]+)")?(?:\s+"([^"]+)")?(?:\s+(\d+))?\s*\{cell\s+(\d+)\s+(\d+)\}(?:\s*\{user\s+"([^"]+)"\})?\}';
+
+      for ItemMatch in TRegEx.Matches(InvBlock, ItemRegex) do
+      begin
+        Item.ItemName := ItemMatch.Groups[1].Value;
+        Item.ItemType := ItemMatch.Groups[2].Value;
+        if Item.ItemType = '' then
+          Item.ItemType := ItemMatch.Groups[3].Value; // Manchmal ist der Typ an dritter Stelle
+
+        if ItemMatch.Groups[4].Value <> '' then
+          Item.Quantity := StrToIntDef(ItemMatch.Groups[4].Value, 1)
+        else
+          Item.Quantity := 1;
+
+        Item.Cell := Format('%s,%s', [ItemMatch.Groups[5].Value,
+                                      ItemMatch.Groups[6].Value]);
+        Item.IsUserItem := ItemMatch.Groups[7].Value <> '';
+
+        Items.Add(Item);
+      end;
+    end;
+
+    Result := Items.ToArray;
+  finally
+    Items.Free;
+  end;
+end;
+
+function TConquestSave.GetUnitDetails(const UnitId: string): TUnitDetails;
+var
+  Text: string;
+  M: TMatch;
+  Pattern: string;
+begin
+  Result := Default(TUnitDetails);
+  Result.UnitId := UnitId;
+
+  Text := ReadAllText;
+
+  // Haupt-Pattern für Human/Entity Block
+  Pattern := '\{(Human|Entity)\s+"([^"]+)"\s+' + TRegEx.Escape(UnitId) + '(.*?)\n\t\}';
+  M := TRegEx.Match(Text, Pattern, [roSingleLine]);
+
+  if M.Success then
+  begin
+    Result.Kind := M.Groups[1].Value;
+    Result.UnitType := M.Groups[2].Value;
+
+    // Extrahiere Details aus dem Block
+    var Block := M.Groups[3].Value;
+
+    // Position
+    M := TRegEx.Match(Block, '\{Position\s+([-\d.]+)\s+([-\d.]+)\}');
+    if M.Success then
+      Result.Position := M.Groups[1].Value + ' ' + M.Groups[2].Value;
+
+    // Veterancy
+    M := TRegEx.Match(Block, '\{Veterancy\s+(\d+)\}');
+    if M.Success then
+      Result.Veterancy := StrToIntDef(M.Groups[1].Value, 0);
+
+    // Score
+    M := TRegEx.Match(Block, '\{Score\s+([\d.]+)\}');
+    if M.Success then
+      Result.Score := StrToFloatDef(M.Groups[1].Value, 0,
+                                     FormatSettings.Invariant);
+
+    // InfantryKills
+    M := TRegEx.Match(Block, '\{InfantryKills\s+(\d+)\}');
+    if M.Success then
+      Result.InfantryKills := StrToIntDef(M.Groups[1].Value, 0);
+
+    // MID
+    M := TRegEx.Match(Block, '\{MID\s+(\d+)\}');
+    if M.Success then
+      Result.MID := StrToIntDef(M.Groups[1].Value, 0);
+
+    // NameId
+    M := TRegEx.Match(Block, '\{NameId\s+(\d+)\s+(\d+)\}');
+    if M.Success then
+    begin
+      Result.NameId1 := StrToIntDef(M.Groups[1].Value, 0);
+      Result.NameId2 := StrToIntDef(M.Groups[2].Value, 0);
+    end;
+
+    // LastItem
+    M := TRegEx.Match(Block, '\{LastItem\s+"([^"]+)"\}');
+    if M.Success then
+      Result.LastItem := M.Groups[1].Value;
+
+    // LastThrowItem
+    M := TRegEx.Match(Block, '\{LastThrowItem\s+"([^"]+)"\}');
+    if M.Success then
+      Result.LastThrowItem := M.Groups[1].Value;
+
+    // FsmState
+    M := TRegEx.Match(Block, '\{FsmState\s+"([^"]+)"\}');
+    if M.Success then
+      Result.FsmState := M.Groups[1].Value;
+
+    // Unit Name aus GetUnitInfo
+    var Info := GetUnitInfo(UnitId);
+    Result.Name := Info.Name;
+
+    // Inventar
+    Result.Inventory := ParseInventory(UnitId);
+  end;
 end;
 
 procedure TConquestSave.MoveUnit(BaseSquadIndex: Integer; const UnitId: string;

@@ -31,6 +31,11 @@ type
     LblBaseInfo: TLabel;
     LblTargetInfo: TLabel;
     ChkOnlyHumans: TCheckBox;
+    PageControl1: TPageControl;
+    TabGeneral: TTabSheet;
+    TabInventory: TTabSheet;
+    MemoInfo: TMemo;
+    ListViewInventory: TListView;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
@@ -58,6 +63,8 @@ type
     function IsValidUnit(const UnitId: string): Boolean;
     function IsEntityUnit(const UnitId: string): Boolean;
     procedure RestoreFocusToSquad(ATree: TTreeView; ASquadIndex: Integer);
+    procedure UpdateUnitInfoPanel(const UnitId: string);
+    procedure ClearInfoPanel;
   public
   end;
 
@@ -74,7 +81,7 @@ begin
   SetControlsEnabled(False);
 
   OpenDialog1.Filter := 'Gates of Hell Save (*.sav)|*.sav';
-  SaveDialog1.Filter := 'Gates of Hell Save (*.sav)|*.sav';
+  SaveDialog1.Filter := 'Gates of Hell Save (*.sav)|*.sav|CSV-Datei (*.csv)|*.csv';
 
   LblBaseInfo.Caption := 'Quelle: (keine Auswahl)';
   LblTargetInfo.Caption := 'Ziel: (keine Auswahl)';
@@ -82,6 +89,12 @@ begin
   // CustomDraw Event Handler zuweisen
   TreeBase.OnCustomDrawItem := TreeCustomDrawItem;
   TreeTarget.OnCustomDrawItem := TreeCustomDrawItem;
+
+  // Info-Panel initial leeren
+  ClearInfoPanel;
+
+  // Ersten Tab aktivieren
+  PageControl1.ActivePageIndex := 0;
 end;
 
 procedure TFrmMain.FormDestroy(Sender: TObject);
@@ -253,6 +266,7 @@ begin
     PopulateTrees;
     SetControlsEnabled(True);
     ShowStatus('Save geladen.');
+    ClearInfoPanel;
   except
     on E: Exception do
     begin
@@ -322,21 +336,148 @@ begin
   LblTargetInfo.Caption := S;
 end;
 
+procedure TFrmMain.ClearInfoPanel;
+begin
+  MemoInfo.Clear;
+  MemoInfo.Lines.Add('Keine Unit ausgewählt');
+  ListViewInventory.Items.Clear;
+end;
+
+procedure TFrmMain.UpdateUnitInfoPanel(const UnitId: string);
+var
+  Details: TUnitDetails;
+  Item: TListItem;
+  I: Integer;
+  S: string;
+begin
+  if IsEmptySlot(UnitId) then
+  begin
+    MemoInfo.Clear;
+    MemoInfo.Lines.Add('Leerer Slot');
+    ListViewInventory.Items.Clear;
+    Exit;
+  end;
+
+  try
+    Details := FSave.GetUnitDetails(UnitId);
+
+    // Allgemeine Informationen
+    MemoInfo.Clear;
+    MemoInfo.Lines.Add('=== UNIT INFORMATIONEN ===');
+    MemoInfo.Lines.Add('');
+    MemoInfo.Lines.Add(Format('Unit ID:        %s', [Details.UnitId]));
+    MemoInfo.Lines.Add(Format('Typ:            %s', [Details.Kind]));
+    MemoInfo.Lines.Add(Format('Unit-Klasse:    %s', [Details.UnitType]));
+    MemoInfo.Lines.Add(Format('Name:           %s', [Details.Name]));
+    MemoInfo.Lines.Add('');
+
+    if Details.Position <> '' then
+      MemoInfo.Lines.Add(Format('Position:       %s', [Details.Position]));
+
+    if Details.Veterancy > 0 then
+      MemoInfo.Lines.Add(Format('Veteranenstufe: %d', [Details.Veterancy]));
+
+    if Details.Score > 0 then
+      MemoInfo.Lines.Add(Format('Score:          %.2f', [Details.Score]));
+
+    if Details.InfantryKills > 0 then
+      MemoInfo.Lines.Add(Format('Infantry Kills: %d', [Details.InfantryKills]));
+
+    MemoInfo.Lines.Add(Format('MID:            %d', [Details.MID]));
+
+    if (Details.NameId1 > 0) or (Details.NameId2 > 0) then
+      MemoInfo.Lines.Add(Format('Name-IDs:       %d, %d', [Details.NameId1, Details.NameId2]));
+
+    if Details.LastItem <> '' then
+      MemoInfo.Lines.Add(Format('Letzte Waffe:   %s', [Details.LastItem]));
+
+    if Details.LastThrowItem <> '' then
+      MemoInfo.Lines.Add(Format('Letzte Granate: %s', [Details.LastThrowItem]));
+
+    if Details.FsmState <> '' then
+      MemoInfo.Lines.Add(Format('FSM-Status:     %s', [Details.FsmState]));
+
+    // Inventar
+    ListViewInventory.Items.Clear;
+    for I := 0 to High(Details.Inventory) do
+    begin
+      Item := ListViewInventory.Items.Add;
+      Item.Caption := Details.Inventory[I].ItemName;
+
+      // Typ
+      if Details.Inventory[I].ItemType <> '' then
+        Item.SubItems.Add(Details.Inventory[I].ItemType)
+      else
+        Item.SubItems.Add('-');
+
+      // Anzahl
+      if Details.Inventory[I].Quantity > 1 then
+        Item.SubItems.Add(IntToStr(Details.Inventory[I].Quantity))
+      else
+        Item.SubItems.Add('1');
+
+      // Position
+      Item.SubItems.Add('Cell ' + Details.Inventory[I].Cell);
+
+      // Anmerkung
+      if Details.Inventory[I].IsUserItem then
+        Item.SubItems.Add('Ausgerüstet')
+      else
+        Item.SubItems.Add('');
+    end;
+
+    // Wenn kein Inventar vorhanden
+    if Length(Details.Inventory) = 0 then
+    begin
+      Item := ListViewInventory.Items.Add;
+      Item.Caption := '(Kein Inventar gefunden)';
+    end;
+
+  except
+    on E: Exception do
+    begin
+      MemoInfo.Clear;
+      MemoInfo.Lines.Add('Fehler beim Laden der Unit-Details:');
+      MemoInfo.Lines.Add(E.Message);
+      ListViewInventory.Items.Clear;
+    end;
+  end;
+end;
+
 procedure TFrmMain.TreeBaseChange(Sender: TObject; Node: TTreeNode);
+var
+  U: TNodeInfo;
 begin
   UpdateInfoLabels;
+
+  // Update Info-Panel wenn eine Unit ausgewählt ist
+  U := SelectedUnitInfo(TreeBase);
+  if Assigned(U) then
+    UpdateUnitInfoPanel(U.UnitId)
+  else
+    ClearInfoPanel;
 end;
 
 procedure TFrmMain.TreeTargetChange(Sender: TObject; Node: TTreeNode);
+var
+  U: TNodeInfo;
 begin
   UpdateInfoLabels;
+
+  // Update Info-Panel wenn eine Unit ausgewählt ist (Target hat Priorität)
+  U := SelectedUnitInfo(TreeTarget);
+  if Assigned(U) then
+    UpdateUnitInfoPanel(U.UnitId);
 end;
 
 procedure TFrmMain.ChkOnlyHumansClick(Sender: TObject);
 begin
   // Bei Änderung der Checkbox die TreeViews neu laden
   if Assigned(FSave) then
+  begin
     PopulateTrees;
+    ClearInfoPanel;
+  end;
 end;
 
 procedure TFrmMain.TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
@@ -451,6 +592,14 @@ begin
     RestoreFocusToSquad(TreeBase, BaseSquadIndex);
     RestoreFocusToSquad(TreeTarget, TargetSquadIndex);
 
+    // Info-Panel aktualisieren (falls eine Unit noch selektiert ist)
+    if Assigned(SelectedUnitInfo(TreeBase)) then
+      UpdateUnitInfoPanel(SelectedUnitInfo(TreeBase).UnitId)
+    else if Assigned(SelectedUnitInfo(TreeTarget)) then
+      UpdateUnitInfoPanel(SelectedUnitInfo(TreeTarget).UnitId)
+    else
+      ClearInfoPanel;
+
     ShowStatus('Units getauscht.');
   except
     on E: Exception do
@@ -460,6 +609,7 @@ end;
 
 procedure TFrmMain.BtnSaveAsClick(Sender: TObject);
 begin
+  SaveDialog1.FilterIndex := 1; // Default auf .sav
   if not SaveDialog1.Execute then Exit;
   try
     FSave.SaveToSaveAs(SaveDialog1.FileName);
@@ -478,6 +628,7 @@ var
   Info: TUnitInfo;
   Line: string;
 begin
+  SaveDialog1.FilterIndex := 2; // CSV auswählen
   if not SaveDialog1.Execute then Exit;
   Csv := TStringList.Create;
   try

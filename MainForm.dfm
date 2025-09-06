@@ -2,7 +2,7 @@ object FrmMain: TFrmMain
   Left = 0
   Top = 0
   Caption = 'GOH Savegame Editor'
-  ClientHeight = 420
+  ClientHeight = 600
   ClientWidth = 860
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -116,6 +116,77 @@ object FrmMain: TFrmMain
     State = cbChecked
     TabOrder = 7
     OnClick = ChkOnlyHumansClick
+  end
+  object PageControl1: TPageControl
+    Left = 0
+    Top = 408
+    Width = 860
+    Height = 192
+    ActivePage = TabInventory
+    Align = alBottom
+    TabOrder = 8
+    object TabGeneral: TTabSheet
+      Caption = 'Allgemein'
+      object MemoInfo: TMemo
+        Left = 0
+        Top = 0
+        Width = 852
+        Height = 162
+        Align = alClient
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'Consolas'
+        Font.Style = []
+        ParentFont = False
+        ReadOnly = True
+        ScrollBars = ssVertical
+        TabOrder = 0
+      end
+    end
+    object TabInventory: TTabSheet
+      Caption = 'Inventar'
+      ImageIndex = 1
+      object ListViewInventory: TListView
+        Left = 0
+        Top = 0
+        Width = 852
+        Height = 162
+        Align = alClient
+        Columns = <
+          item
+            Caption = 'Item'
+            Width = 250
+          end
+          item
+            Caption = 'Typ'
+            Width = 150
+          end
+          item
+            Caption = 'Anzahl'
+            Width = 80
+          end
+          item
+            Caption = 'Position'
+            Width = 100
+          end
+          item
+            Caption = 'Anmerkung'
+            Width = 150
+          end>
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -11
+        Font.Name = 'Segoe UI'
+        Font.Style = []
+        GridLines = True
+        ReadOnly = True
+        RowSelect = True
+        ParentFont = False
+        TabOrder = 0
+        ViewStyle = vsReport
+      end
+    end
   end
   object OpenDialog1: TOpenDialog
     Options = [ofFileMustExist, ofEnableSizing]
