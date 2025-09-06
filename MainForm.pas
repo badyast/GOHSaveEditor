@@ -68,6 +68,7 @@ type
     function GetVeterancyDisplay(AVeterancy: Integer): string;
     function GetUnitDisplayName(const UnitId: string): string;
     function GetSquadMaxVeterancy(ASquadIndex: Integer): Integer;
+    procedure CopyTreeStructure(ASourceTree, ATargetTree: TTreeView);
   public
   end;
 
@@ -283,11 +284,58 @@ begin
   ClearTreeData(TreeTarget);
   FAllSquadNames := FSave.GetSquadNames;
   PopulateTree(TreeBase);
-  PopulateTree(TreeTarget);
+  CopyTreeStructure(TreeBase, TreeTarget);
+//  PopulateTree(TreeTarget);
   if TreeBase.Items.Count > 0 then
     TreeBase.Items[0].Expand(True);
   if TreeTarget.Items.Count > 0 then
     TreeTarget.Items[0].Expand(True);
+end;
+
+procedure TFrmMain.CopyTreeStructure(ASourceTree, ATargetTree: TTreeView);
+
+  function CopyNodeRecursive(ASourceNode: TTreeNode; ATargetParent: TTreeNode): TTreeNode;
+  var
+    NewInfo: TNodeInfo;
+    SourceInfo: TNodeInfo;
+    I: Integer;
+  begin
+    // Neue TNodeInfo für den Zielknoten erstellen
+    SourceInfo := TNodeInfo(ASourceNode.Data);
+    NewInfo := TNodeInfo.Create;
+    NewInfo.Kind := SourceInfo.Kind;
+    NewInfo.SquadIndex := SourceInfo.SquadIndex;
+    NewInfo.UnitId := SourceInfo.UnitId;
+
+    // Knoten in Zieltree erstellen
+    if Assigned(ATargetParent) then
+      Result := ATargetTree.Items.AddChildObject(ATargetParent, ASourceNode.Text, NewInfo)
+    else
+      Result := ATargetTree.Items.AddObject(nil, ASourceNode.Text, NewInfo);
+
+    // Rekursiv alle Kindknoten kopieren
+    for I := 0 to ASourceNode.Count - 1 do
+      CopyNodeRecursive(ASourceNode.Item[I], Result);
+  end;
+
+var
+  I: Integer;
+begin
+  /// <summary>
+  /// Kopiert die komplette TreeView-Struktur inklusive aller TNodeInfo-Objekte
+  /// von einer Quell-TreeView in eine Ziel-TreeView. Dies ist deutlich schneller
+  /// als ein erneutes Parsen aller Veteranenstatus-Informationen.
+  /// </summary>
+
+  // Ziel-TreeView leeren (ohne die Quelle zu beeinträchtigen)
+  ClearTreeData(ATargetTree);
+
+  // Alle Root-Knoten kopieren
+  for I := 0 to ASourceTree.Items.Count - 1 do
+  begin
+    if ASourceTree.Items[I].Parent = nil then // Nur Root-Knoten
+      CopyNodeRecursive(ASourceTree.Items[I], nil);
+  end;
 end;
 
 procedure TFrmMain.PopulateTree(ATree: TTreeView);
