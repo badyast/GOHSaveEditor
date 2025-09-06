@@ -65,6 +65,9 @@ type
     procedure RestoreFocusToSquad(ATree: TTreeView; ASquadIndex: Integer);
     procedure UpdateUnitInfoPanel(const UnitId: string);
     procedure ClearInfoPanel;
+    function GetVeterancyDisplay(AVeterancy: Integer): string;
+    function GetUnitDisplayName(const UnitId: string): string;
+    function GetSquadMaxVeterancy(ASquadIndex: Integer): Integer;
   public
   end;
 
@@ -162,6 +165,118 @@ begin
   end;
 end;
 
+function TFrmMain.GetVeterancyDisplay(AVeterancy: Integer): string;
+begin
+  /// <summary>
+  /// Konvertiert Veteranenstufe in Anzeige-String.
+  /// Gates of Hell verwendet Veteranenstufen 0-8.
+  /// Niedrige Stufen (1-3) als Sterne, höhere Stufen (4-8) als römische Zahlen.
+  /// </summary>
+  case AVeterancy of
+    0: Result := '';              // Rekrut/Normal - keine Anzeige
+    1: Result := ' [★]';          // Erfahren
+    2: Result := ' [★★]';         // Veteran
+    3: Result := ' [★★★]';        // Elite
+    4: Result := ' [★IV]';        // Hoch-Elite
+    5: Result := ' [★V]';         // Meister
+    6: Result := ' [★VI]';        // Großmeister
+    7: Result := ' [★VII]';       // Legende
+    8: Result := ' [★VIII]';      // Held/Maximum
+  else
+    // Fallback für unerwartete Werte
+    if AVeterancy > 8 then
+      Result := ' [★×' + IntToStr(AVeterancy) + ']'
+    else
+      Result := '';
+  end;
+end;
+
+function TFrmMain.GetSquadMaxVeterancy(ASquadIndex: Integer): Integer;
+var
+  Units: TArray<string>;
+  I: Integer;
+  UnitDetails: TUnitDetails;
+  UnitInfo: TUnitInfo;
+  MaxVeterancy: Integer;
+begin
+  /// <summary>
+  /// Ermittelt die höchste Veteranenstufe aller menschlichen Einheiten in einem Squad.
+  /// Entities werden ignoriert, da sie keine Veteranenstufen haben.
+  /// </summary>
+  Result := 0;
+  MaxVeterancy := 0;
+
+  try
+    Units := FSave.GetSquadMembers(ASquadIndex);
+
+    for I := 0 to Length(Units) - 1 do
+    begin
+      // Leere Slots überspringen
+      if IsEmptySlot(Units[I]) then
+        Continue;
+
+      try
+        // Nur menschliche Einheiten prüfen
+        UnitInfo := FSave.GetUnitInfo(Units[I]);
+        if not SameText(UnitInfo.Kind, 'Human') then
+          Continue;
+
+        // Veteranenstatus abrufen
+        UnitDetails := FSave.GetUnitDetails(Units[I]);
+        if UnitDetails.Veterancy > MaxVeterancy then
+          MaxVeterancy := UnitDetails.Veterancy;
+
+      except
+        // Bei Fehlern diese Unit überspringen
+        Continue;
+      end;
+    end;
+
+    Result := MaxVeterancy;
+  except
+    // Bei generellen Fehlern 0 zurückgeben
+    Result := 0;
+  end;
+end;
+
+function TFrmMain.GetUnitDisplayName(const UnitId: string): string;
+var
+  UnitInfo: TUnitInfo;
+  UnitDetails: TUnitDetails;
+  VeterancyText: string;
+begin
+  /// <summary>
+  /// Erstellt den vollständigen Anzeigename für eine Unit
+  /// inklusive Veteranenstatus für menschliche Einheiten.
+  /// </summary>
+  Result := UnitId;
+
+  try
+    // Basis-Informationen abrufen
+    UnitInfo := FSave.GetUnitInfo(UnitId);
+
+    // Unit-Name hinzufügen wenn vorhanden
+    if UnitInfo.Name <> '' then
+      Result := UnitId + ' – ' + UnitInfo.Name;
+
+    // Veteranenstatus nur für menschliche Einheiten anzeigen
+    if SameText(UnitInfo.Kind, 'Human') then
+    begin
+      try
+        UnitDetails := FSave.GetUnitDetails(UnitId);
+        VeterancyText := GetVeterancyDisplay(UnitDetails.Veterancy);
+        Result := Result + VeterancyText;
+      except
+        // Falls GetUnitDetails fehlschlägt, ignorieren wir den Veteranenstatus
+      end;
+    end;
+
+  except
+    // Fallback: nur ID anzeigen bei Fehlern
+    Result := UnitId;
+  end;
+end;
+
 procedure TFrmMain.PopulateTrees;
 begin
   ClearTreeData(TreeBase);
@@ -181,9 +296,10 @@ var
   SquadNode, UnitNode: TTreeNode;
   Units: TArray<string>;
   Info: TNodeInfo;
-  UnitInfo: TUnitInfo;
-  UnitCaption: string;
+  UnitCaption, SquadCaption: string;
   IsEntity, IsEmpty: Boolean;
+  SquadMaxVeterancy: Integer;
+  SquadVeterancyText: string;
 begin
   for I := 0 to Length(FAllSquadNames) - 1 do
   begin
@@ -191,7 +307,16 @@ begin
     Info.Kind := nkSquad;
     Info.SquadIndex := I;
     Info.UnitId := '';
-    SquadNode := ATree.Items.AddObject(nil, FAllSquadNames[I], Info);
+
+    // Squad-Namen mit höchstem Veteranenstatus erstellen
+    SquadCaption := FAllSquadNames[I];
+
+    // Höchsten Veteranenstatus im Squad ermitteln
+    SquadMaxVeterancy := GetSquadMaxVeterancy(I);
+    SquadVeterancyText := GetVeterancyDisplay(SquadMaxVeterancy);
+    SquadCaption := SquadCaption + SquadVeterancyText;
+
+    SquadNode := ATree.Items.AddObject(nil, SquadCaption, Info);
 
     Units := FSave.GetSquadMembers(I);
     for J := 0 to Length(Units) - 1 do
@@ -212,15 +337,8 @@ begin
         if ChkOnlyHumans.Checked and IsEntity then
           Continue;
 
-        UnitCaption := Units[J];
-
-        try
-          UnitInfo := FSave.GetUnitInfo(Units[J]);
-          if UnitInfo.Name <> '' then
-            UnitCaption := Units[J] + ' – ' + UnitInfo.Name;
-        except
-          // Fallback: nur ID anzeigen
-        end;
+        // Vollständigen Anzeigename mit Veteranenstatus erstellen
+        UnitCaption := GetUnitDisplayName(Units[J]);
       end;
 
       Info := TNodeInfo.Create;
@@ -375,7 +493,7 @@ begin
       MemoInfo.Lines.Add(Format('Position:       %s', [Details.Position]));
 
     if Details.Veterancy > 0 then
-      MemoInfo.Lines.Add(Format('Veteranenstufe: %d', [Details.Veterancy]));
+      MemoInfo.Lines.Add(Format('Veteranenstufe: %d%s', [Details.Veterancy, GetVeterancyDisplay(Details.Veterancy)]));
 
     if Details.Score > 0 then
       MemoInfo.Lines.Add(Format('Score:          %.2f', [Details.Score]));
@@ -626,13 +744,15 @@ var
   I, J: Integer;
   Units: TArray<string>;
   Info: TUnitInfo;
+  UnitDetails: TUnitDetails;
   Line: string;
+  VeterancyText: string;
 begin
   SaveDialog1.FilterIndex := 2; // CSV auswählen
   if not SaveDialog1.Execute then Exit;
   Csv := TStringList.Create;
   try
-    Csv.Add('Squad;UnitId;Type;Name');
+    Csv.Add('Squad;UnitId;Type;Name;Veterancy');
     FAllSquadNames := FSave.GetSquadNames;
     for I := 0 to Length(FAllSquadNames) - 1 do
     begin
@@ -641,15 +761,29 @@ begin
       begin
         try
           if IsEmptySlot(Units[J]) then
-            Line := Format('%s;%s;%s;%s',[FAllSquadNames[I], Units[J], 'Empty', '[Leer]'])
+            Line := Format('%s;%s;%s;%s;%s',[FAllSquadNames[I], Units[J], 'Empty', '[Leer]', ''])
           else
           begin
             Info := FSave.GetUnitInfo(Units[J]);
-            Line := Format('%s;%s;%s;%s',[FAllSquadNames[I], Units[J], Info.Kind, Info.Name]);
+
+            // Veteranenstatus für menschliche Einheiten abrufen
+            VeterancyText := '';
+            if SameText(Info.Kind, 'Human') then
+            begin
+              try
+                UnitDetails := FSave.GetUnitDetails(Units[J]);
+                if UnitDetails.Veterancy > 0 then
+                  VeterancyText := IntToStr(UnitDetails.Veterancy);
+              except
+                // Bei Fehlern leeren Veteranenstatus verwenden
+              end;
+            end;
+
+            Line := Format('%s;%s;%s;%s;%s',[FAllSquadNames[I], Units[J], Info.Kind, Info.Name, VeterancyText]);
           end;
         except
           on E: Exception do
-            Line := Format('%s;%s;%s;%s',[FAllSquadNames[I], Units[J], '?', '']);
+            Line := Format('%s;%s;%s;%s;%s',[FAllSquadNames[I], Units[J], '?', '', '']);
         end;
         Csv.Add(Line);
       end;
