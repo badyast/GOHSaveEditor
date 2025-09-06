@@ -441,38 +441,99 @@ var
   Item: TInventoryItem;
   InvBlock: string;
   ItemRegex: string;
+  StartPos, EndPos, BraceCount: Integer;
+  Lines: TStringList;
+  I: Integer;
+  Line: string;
+  InInventoryBlock, InBoxBlock: Boolean;
 begin
   Items := TList<TInventoryItem>.Create;
   try
     Text := ReadAllText;
+    Lines := TStringList.Create;
+    try
+      Lines.Text := Text;
 
-    // Finde den Inventory-Block für diese Unit
-    M := TRegEx.Match(Text, '\{Inventory\s+' + TRegEx.Escape(UnitId) +
-                      '\s*\{box(.*?)\}\s*\}', [roSingleLine]);
+      // Manuell den Inventory-Block für diese Unit finden
+      InInventoryBlock := False;
+      InBoxBlock := False;
+      InvBlock := '';
 
-    if M.Success then
+      for I := 0 to Lines.Count - 1 do
+      begin
+        Line := Lines[I].Trim;
+
+        // Start des Inventory-Blocks gefunden?
+        if Line.Contains('{Inventory') and Line.Contains(UnitId) then
+        begin
+          InInventoryBlock := True;
+          Continue;
+        end;
+
+        // Sind wir im Inventory-Block?
+        if InInventoryBlock then
+        begin
+          // Start der Box gefunden?
+          if Line.Contains('{box') then
+          begin
+            InBoxBlock := True;
+            Continue;
+          end;
+
+          // Ende des Inventory-Blocks?
+          if Line = '}' then
+          begin
+            Break; // Inventory-Block beendet
+          end;
+
+          // Sammle Zeilen innerhalb der Box
+          if InBoxBlock then
+          begin
+            InvBlock := InvBlock + Line + #13#10;
+          end;
+        end;
+      end;
+
+    finally
+      Lines.Free;
+    end;
+
+    // Jetzt die Items aus dem InvBlock parsen
+    if InvBlock <> '' then
     begin
-      InvBlock := M.Groups[1].Value;
-
-      // Parse einzelne Items
-      // Format: {item "itemname" "type"? quantity? {cell x y}{user "part"}?}
-      ItemRegex := '\{item\s+"([^"]+)"(?:\s+"([^"]+)")?(?:\s+"([^"]+)")?(?:\s+(\d+))?\s*\{cell\s+(\d+)\s+(\d+)\}(?:\s*\{user\s+"([^"]+)"\})?\}';
+      // Flexiblerer Item-RegEx der verschiedene Formate versteht
+      // Grundformat: {item "name" [weitere_parameter] {cell x y} [optional {user "part"}]}
+      ItemRegex := '\{item\s+"([^"]+)"([^}]*?)\{cell\s+(\d+)\s+(\d+)\}([^}]*?)\}';
 
       for ItemMatch in TRegEx.Matches(InvBlock, ItemRegex) do
       begin
         Item.ItemName := ItemMatch.Groups[1].Value;
-        Item.ItemType := ItemMatch.Groups[2].Value;
-        if Item.ItemType = '' then
-          Item.ItemType := ItemMatch.Groups[3].Value; // Manchmal ist der Typ an dritter Stelle
 
-        if ItemMatch.Groups[4].Value <> '' then
-          Item.Quantity := StrToIntDef(ItemMatch.Groups[4].Value, 1)
-        else
-          Item.Quantity := 1;
+        // Parse die Zusatzparameter zwischen Item-Name und Cell
+        var ParamsPart := ItemMatch.Groups[2].Value.Trim;
+        var CellX := ItemMatch.Groups[3].Value;
+        var CellY := ItemMatch.Groups[4].Value;
+        var AfterCellPart := ItemMatch.Groups[5].Value.Trim;
 
-        Item.Cell := Format('%s,%s', [ItemMatch.Groups[5].Value,
-                                      ItemMatch.Groups[6].Value]);
-        Item.IsUserItem := ItemMatch.Groups[7].Value <> '';
+        // Item-Typ und Quantity aus den Parametern extrahieren
+        Item.ItemType := '';
+        Item.Quantity := 1;
+
+        // Suche nach quoted strings für Typ
+        var TypeMatch := TRegEx.Match(ParamsPart, '"([^"]+)"');
+        if TypeMatch.Success then
+          Item.ItemType := TypeMatch.Groups[1].Value;
+
+        // Suche nach Zahlen für Quantity
+        var QuantityMatch := TRegEx.Match(ParamsPart, '\b(\d+)\b');
+        if QuantityMatch.Success then
+          Item.Quantity := StrToIntDef(QuantityMatch.Groups[1].Value, 1);
+
+        // Cell-Position
+        Item.Cell := CellX + ',' + CellY;
+
+        // User-Item prüfen
+        Item.IsUserItem := AfterCellPart.Contains('{user');
 
         Items.Add(Item);
       end;
