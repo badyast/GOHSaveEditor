@@ -3,8 +3,10 @@
 interface
 
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes,
-  Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ComCtrls,
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
+  System.Classes,
+  Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
+  Vcl.ComCtrls,
   System.Generics.Collections, ConquestSave;
 
 type
@@ -15,6 +17,12 @@ type
     Kind: TNodeKind;
     SquadIndex: Integer;
     UnitId: string; // nur bei nkUnit gefüllt
+  end;
+
+  TSquadData = record
+    Name: string;
+    UnitIds: TArray<string>;
+    MaxVeterancy: Integer; // Gecachter Wert
   end;
 
   TFrmMain = class(TForm)
@@ -49,6 +57,8 @@ type
     procedure TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
       State: TCustomDrawState; var DefaultDraw: Boolean);
   private
+    FSquads: TArray<TSquadData>; // Live-Datenstruktur
+    FSquadsDirty: Boolean; // Änderungen pending?
     FSave: TConquestSave;
     FAllSquadNames: TArray<string>;
     procedure SetControlsEnabled(AEnabled: Boolean);
@@ -69,6 +79,12 @@ type
     function GetUnitDisplayName(const UnitId: string): string;
     function GetSquadMaxVeterancy(ASquadIndex: Integer): Integer;
     procedure CopyTreeStructure(ASourceTree, ATargetTree: TTreeView);
+    procedure LoadSquadsFromSave;
+    procedure UpdateTreeViewsFromSquads;
+    procedure UpdateSquadVeterancy(ASquadIndex: Integer);
+    procedure SwapUnitsInSquads(ASquadA, AUnitA: Integer;
+      ASquadB, AUnitB: Integer; const AUnitIdA, AUnitIdB: string);
+    procedure RebuildFCampaignFromSquads;
   public
   end;
 
@@ -85,7 +101,8 @@ begin
   SetControlsEnabled(False);
 
   OpenDialog1.Filter := 'Gates of Hell Save (*.sav)|*.sav';
-  SaveDialog1.Filter := 'Gates of Hell Save (*.sav)|*.sav|CSV-Datei (*.csv)|*.csv';
+  SaveDialog1.Filter :=
+    'Gates of Hell Save (*.sav)|*.sav|CSV-Datei (*.csv)|*.csv';
 
   LblBaseInfo.Caption := 'Quelle: (keine Auswahl)';
   LblTargetInfo.Caption := 'Ziel: (keine Auswahl)';
@@ -147,6 +164,25 @@ begin
   Result := not IsEmptySlot(UnitId);
 end;
 
+procedure TFrmMain.LoadSquadsFromSave;
+var
+  I, J: Integer;
+  SquadNames: TArray<string>;
+  Units: TArray<string>;
+begin
+  SquadNames := FSave.GetSquadNames;
+  SetLength(FSquads, Length(SquadNames));
+
+  for I := 0 to Length(SquadNames) - 1 do
+  begin
+    FSquads[I].Name := SquadNames[I];
+    FSquads[I].UnitIds := FSave.GetSquadMembers(I);
+    FSquads[I].MaxVeterancy := GetSquadMaxVeterancy(I);
+  end;
+
+  FSquadsDirty := False;
+end;
+
 function TFrmMain.IsEntityUnit(const UnitId: string): Boolean;
 var
   UnitInfo: TUnitInfo;
@@ -174,15 +210,24 @@ begin
   /// Niedrige Stufen (1-3) als Sterne, höhere Stufen (4-8) als römische Zahlen.
   /// </summary>
   case AVeterancy of
-    0: Result := '';              // Rekrut/Normal - keine Anzeige
-    1: Result := ' [★]';          // Erfahren
-    2: Result := ' [★★]';         // Veteran
-    3: Result := ' [★★★]';        // Elite
-    4: Result := ' [★IV]';        // Hoch-Elite
-    5: Result := ' [★V]';         // Meister
-    6: Result := ' [★VI]';        // Großmeister
-    7: Result := ' [★VII]';       // Legende
-    8: Result := ' [★VIII]';      // Held/Maximum
+    0:
+      Result := ''; // Rekrut/Normal - keine Anzeige
+    1:
+      Result := ' [★]'; // Erfahren
+    2:
+      Result := ' [★★]'; // Veteran
+    3:
+      Result := ' [★★★]'; // Elite
+    4:
+      Result := ' [★IV]'; // Hoch-Elite
+    5:
+      Result := ' [★V]'; // Meister
+    6:
+      Result := ' [★VI]'; // Großmeister
+    7:
+      Result := ' [★VII]'; // Legende
+    8:
+      Result := ' [★VIII]'; // Held/Maximum
   else
     // Fallback für unerwartete Werte
     if AVeterancy > 8 then
@@ -280,21 +325,13 @@ end;
 
 procedure TFrmMain.PopulateTrees;
 begin
-  ClearTreeData(TreeBase);
-  ClearTreeData(TreeTarget);
-  FAllSquadNames := FSave.GetSquadNames;
-  PopulateTree(TreeBase);
-  CopyTreeStructure(TreeBase, TreeTarget);
-//  PopulateTree(TreeTarget);
-  if TreeBase.Items.Count > 0 then
-    TreeBase.Items[0].Expand(True);
-  if TreeTarget.Items.Count > 0 then
-    TreeTarget.Items[0].Expand(True);
+  UpdateTreeViewsFromSquads;
 end;
 
 procedure TFrmMain.CopyTreeStructure(ASourceTree, ATargetTree: TTreeView);
 
-  function CopyNodeRecursive(ASourceNode: TTreeNode; ATargetParent: TTreeNode): TTreeNode;
+  function CopyNodeRecursive(ASourceNode: TTreeNode; ATargetParent: TTreeNode)
+    : TTreeNode;
   var
     NewInfo: TNodeInfo;
     SourceInfo: TNodeInfo;
@@ -309,7 +346,8 @@ procedure TFrmMain.CopyTreeStructure(ASourceTree, ATargetTree: TTreeView);
 
     // Knoten in Zieltree erstellen
     if Assigned(ATargetParent) then
-      Result := ATargetTree.Items.AddChildObject(ATargetParent, ASourceNode.Text, NewInfo)
+      Result := ATargetTree.Items.AddChildObject(ATargetParent,
+        ASourceNode.Text, NewInfo)
     else
       Result := ATargetTree.Items.AddObject(nil, ASourceNode.Text, NewInfo);
 
@@ -413,10 +451,12 @@ var
 begin
   Result := -1;
   N := ATree.Selected;
-  if not Assigned(N) then Exit;
+  if not Assigned(N) then
+    Exit;
 
   Info := TNodeInfo(N.Data);
-  if not Assigned(Info) then Exit;
+  if not Assigned(Info) then
+    Exit;
 
   // Egal ob Squad- oder Unit-Knoten: SquadIndex steckt drin
   Result := Info.SquadIndex;
@@ -429,7 +469,8 @@ begin
   try
     FSave.LoadFromSave(OpenDialog1.FileName);
     LblSave.Caption := ExtractFileName(OpenDialog1.FileName);
-    PopulateTrees;
+    LoadSquadsFromSave;
+    UpdateTreeViewsFromSquads;
     SetControlsEnabled(True);
     ShowStatus('Save geladen.');
     ClearInfoPanel;
@@ -437,7 +478,8 @@ begin
     on E: Exception do
     begin
       SetControlsEnabled(False);
-      Application.MessageBox(PChar('Fehler beim Laden: ' + E.Message), 'Fehler', MB_ICONERROR);
+      Application.MessageBox(PChar('Fehler beim Laden: ' + E.Message), 'Fehler',
+        MB_ICONERROR);
     end;
   end;
 end;
@@ -455,10 +497,10 @@ begin
   if Assigned(U) then
   begin
     if IsEmptySlot(U.UnitId) then
-      S := S + Format('Squad %d, [Leer]',[U.SquadIndex])
+      S := S + Format('Squad %d, [Leer]', [U.SquadIndex])
     else
     begin
-      S := S + Format('Squad %d, Unit %s',[U.SquadIndex, U.UnitId]);
+      S := S + Format('Squad %d, Unit %s', [U.SquadIndex, U.UnitId]);
       try
         Info := FSave.GetUnitInfo(U.UnitId);
         if (Info.Kind <> '') or (Info.Name <> '') then
@@ -478,10 +520,10 @@ begin
   if Assigned(U) then
   begin
     if IsEmptySlot(U.UnitId) then
-      S := S + Format('Squad %d, [Leer]',[U.SquadIndex])
+      S := S + Format('Squad %d, [Leer]', [U.SquadIndex])
     else
     begin
-      S := S + Format('Squad %d, Unit %s',[U.SquadIndex, U.UnitId]);
+      S := S + Format('Squad %d, Unit %s', [U.SquadIndex, U.UnitId]);
       try
         Info := FSave.GetUnitInfo(U.UnitId);
         if (Info.Kind <> '') or (Info.Name <> '') then
@@ -500,6 +542,97 @@ begin
       S := S + '(keine Auswahl)';
   end;
   LblTargetInfo.Caption := S;
+end;
+
+procedure TFrmMain.UpdateSquadVeterancy(ASquadIndex: Integer);
+var
+  I: Integer;
+  UnitDetails: TUnitDetails;
+  UnitInfo: TUnitInfo;
+  MaxVeterancy: Integer;
+begin
+  MaxVeterancy := 0;
+
+  for I := 0 to Length(FSquads[ASquadIndex].UnitIds) - 1 do
+  begin
+    if IsEmptySlot(FSquads[ASquadIndex].UnitIds[I]) then
+      Continue;
+
+    try
+      UnitInfo := FSave.GetUnitInfo(FSquads[ASquadIndex].UnitIds[I]);
+      if not SameText(UnitInfo.Kind, 'Human') then
+        Continue;
+
+      UnitDetails := FSave.GetUnitDetails(FSquads[ASquadIndex].UnitIds[I]);
+      if UnitDetails.Veterancy > MaxVeterancy then
+        MaxVeterancy := UnitDetails.Veterancy;
+    except
+      Continue;
+    end;
+  end;
+
+  FSquads[ASquadIndex].MaxVeterancy := MaxVeterancy;
+end;
+
+procedure TFrmMain.UpdateTreeViewsFromSquads;
+var
+  I, J: Integer;
+  SquadNode, UnitNode: TTreeNode;
+  Info: TNodeInfo;
+  UnitCaption, SquadCaption: string;
+  IsEntity, IsEmpty: Boolean;
+  SquadVeterancyText: string;
+begin
+  ClearTreeData(TreeBase);
+  ClearTreeData(TreeTarget);
+
+  for I := 0 to Length(FSquads) - 1 do
+  begin
+    // Squad-Knoten erstellen
+    Info := TNodeInfo.Create;
+    Info.Kind := nkSquad;
+    Info.SquadIndex := I;
+    Info.UnitId := '';
+
+    SquadCaption := FSquads[I].Name;
+    SquadVeterancyText := GetVeterancyDisplay(FSquads[I].MaxVeterancy);
+    SquadCaption := SquadCaption + SquadVeterancyText;
+
+    SquadNode := TreeBase.Items.AddObject(nil, SquadCaption, Info);
+
+    // Unit-Knoten erstellen
+    for J := 0 to Length(FSquads[I].UnitIds) - 1 do
+    begin
+      IsEmpty := IsEmptySlot(FSquads[I].UnitIds[J]);
+
+      if IsEmpty then
+      begin
+        UnitCaption := FSquads[I].UnitIds[J] + ' – [Leer]';
+        IsEntity := False;
+      end
+      else
+      begin
+        IsEntity := IsEntityUnit(FSquads[I].UnitIds[J]);
+        if ChkOnlyHumans.Checked and IsEntity then
+          Continue;
+        UnitCaption := GetUnitDisplayName(FSquads[I].UnitIds[J]);
+      end;
+
+      Info := TNodeInfo.Create;
+      Info.Kind := nkUnit;
+      Info.SquadIndex := I;
+      Info.UnitId := FSquads[I].UnitIds[J];
+      UnitNode := TreeBase.Items.AddChildObject(SquadNode, UnitCaption, Info);
+    end;
+  end;
+
+  // TreeTarget durch Kopieren erstellen
+  CopyTreeStructure(TreeBase, TreeTarget);
+
+  if TreeBase.Items.Count > 0 then
+    TreeBase.Items[0].Expand(True);
+  if TreeTarget.Items.Count > 0 then
+    TreeTarget.Items[0].Expand(True);
 end;
 
 procedure TFrmMain.ClearInfoPanel;
@@ -541,7 +674,8 @@ begin
       MemoInfo.Lines.Add(Format('Position:       %s', [Details.Position]));
 
     if Details.Veterancy > 0 then
-      MemoInfo.Lines.Add(Format('Veteranenstufe: %d%s', [Details.Veterancy, GetVeterancyDisplay(Details.Veterancy)]));
+      MemoInfo.Lines.Add(Format('Veteranenstufe: %d%s', [Details.Veterancy,
+        GetVeterancyDisplay(Details.Veterancy)]));
 
     if Details.Score > 0 then
       MemoInfo.Lines.Add(Format('Score:          %.2f', [Details.Score]));
@@ -552,7 +686,8 @@ begin
     MemoInfo.Lines.Add(Format('MID:            %d', [Details.MID]));
 
     if (Details.NameId1 > 0) or (Details.NameId2 > 0) then
-      MemoInfo.Lines.Add(Format('Name-IDs:       %d, %d', [Details.NameId1, Details.NameId2]));
+      MemoInfo.Lines.Add(Format('Name-IDs:       %d, %d',
+        [Details.NameId1, Details.NameId2]));
 
     if Details.LastItem <> '' then
       MemoInfo.Lines.Add(Format('Letzte Waffe:   %s', [Details.LastItem]));
@@ -682,6 +817,22 @@ begin
   end;
 end;
 
+procedure TFrmMain.RebuildFCampaignFromSquads;
+var
+  I: Integer;
+  OldLine, NewLine: string;
+begin
+  // Für jeden Squad die entsprechende Zeile in FCampaign aktualisieren
+  for I := 0 to Length(FSquads) - 1 do
+  begin
+    OldLine := FSave.GetSquadLine(I);
+    NewLine := FSave.ReplaceUnitIdsInSquadLine(OldLine, FSquads[I].UnitIds);
+    FSave.SetSquadLine(I, NewLine);
+  end;
+
+  FSquadsDirty := False;
+end;
+
 procedure TFrmMain.RestoreFocusToSquad(ATree: TTreeView; ASquadIndex: Integer);
 var
   I: Integer;
@@ -711,19 +862,25 @@ end;
 
 procedure TFrmMain.BtnTransferClick(Sender: TObject);
 begin
-  Application.MessageBox('Transfer-Funktion ist deaktiviert. Verwenden Sie "Tauschen" um Units mit leeren Plätzen zu vertauschen.', 'Hinweis', MB_ICONINFORMATION);
+  Application.MessageBox
+    ('Transfer-Funktion ist deaktiviert. Verwenden Sie "Tauschen" um Units mit leeren Plätzen zu vertauschen.',
+    'Hinweis', MB_ICONINFORMATION);
 end;
 
 procedure TFrmMain.BtnSwapClick(Sender: TObject);
 var
   A, B: TNodeInfo;
   BaseSquadIndex, TargetSquadIndex: Integer;
+  UnitIndexA, UnitIndexB: Integer;
+  I: Integer;
 begin
   A := SelectedUnitInfo(TreeBase);
   B := SelectedUnitInfo(TreeTarget);
   if (not Assigned(A)) or (not Assigned(B)) then
   begin
-    Application.MessageBox('Bitte links und rechts jeweils eine Unit auswählen.', 'Hinweis', MB_ICONINFORMATION);
+    Application.MessageBox
+      ('Bitte links und rechts jeweils eine Unit auswählen.', 'Hinweis',
+      MB_ICONINFORMATION);
     Exit;
   end;
 
@@ -732,33 +889,66 @@ begin
   TargetSquadIndex := B.SquadIndex;
 
   // Prüfen ob beide Units verschoben werden dürfen (nur bei aktivem Filter)
-  if ChkOnlyHumans.Checked and IsValidUnit(A.UnitId) and IsEntityUnit(A.UnitId) then
+  if ChkOnlyHumans.Checked and IsValidUnit(A.UnitId) and IsEntityUnit(A.UnitId)
+  then
   begin
-    Application.MessageBox('Die linke Unit ist eine Entity und kann bei aktivem Filter nicht verschoben werden.', 'Hinweis', MB_ICONINFORMATION);
+    Application.MessageBox
+      ('Die linke Unit ist eine Entity und kann bei aktivem Filter nicht verschoben werden.',
+      'Hinweis', MB_ICONINFORMATION);
     Exit;
   end;
 
-  if ChkOnlyHumans.Checked and IsValidUnit(B.UnitId) and IsEntityUnit(B.UnitId) then
+  if ChkOnlyHumans.Checked and IsValidUnit(B.UnitId) and IsEntityUnit(B.UnitId)
+  then
   begin
-    Application.MessageBox('Die rechte Unit ist eine Entity und kann bei aktivem Filter nicht verschoben werden.', 'Hinweis', MB_ICONINFORMATION);
+    Application.MessageBox
+      ('Die rechte Unit ist eine Entity und kann bei aktivem Filter nicht verschoben werden.',
+      'Hinweis', MB_ICONINFORMATION);
     Exit;
   end;
 
   if (A.SquadIndex = B.SquadIndex) and (SameText(A.UnitId, B.UnitId)) then
   begin
-    Application.MessageBox('Die gleiche Unit kann nicht mit sich selbst getauscht werden.', 'Hinweis', MB_ICONINFORMATION);
+    Application.MessageBox
+      ('Die gleiche Unit kann nicht mit sich selbst getauscht werden.',
+      'Hinweis', MB_ICONINFORMATION);
     Exit;
   end;
 
   try
-    FSave.ExchangeUnits(A.SquadIndex, A.UnitId, B.SquadIndex, B.UnitId);
-    PopulateTrees;
+    // Unit-Indizes in FSquads finden
+    UnitIndexA := -1;
+    UnitIndexB := -1;
+
+    for I := 0 to Length(FSquads[A.SquadIndex].UnitIds) - 1 do
+      if SameText(FSquads[A.SquadIndex].UnitIds[I], A.UnitId) then
+      begin
+        UnitIndexA := I;
+        Break;
+      end;
+
+    for I := 0 to Length(FSquads[B.SquadIndex].UnitIds) - 1 do
+      if SameText(FSquads[B.SquadIndex].UnitIds[I], B.UnitId) then
+      begin
+        UnitIndexB := I;
+        Break;
+      end;
+
+    if (UnitIndexA = -1) or (UnitIndexB = -1) then
+      raise Exception.Create('Unit-Indizes nicht gefunden');
+
+    // SCHNELLER SWAP: Nur FSquads ändern (kein FCampaign-Parsing!)
+    SwapUnitsInSquads(A.SquadIndex, UnitIndexA, B.SquadIndex, UnitIndexB,
+      A.UnitId, B.UnitId);
+
+    // TreeViews schnell neu aufbauen (aus FSquads, nicht aus FCampaign!)
+    UpdateTreeViewsFromSquads;
 
     // Fokus auf die vorherigen Squads wiederherstellen
     RestoreFocusToSquad(TreeBase, BaseSquadIndex);
     RestoreFocusToSquad(TreeTarget, TargetSquadIndex);
 
-    // Info-Panel aktualisieren (falls eine Unit noch selektiert ist)
+    // Info-Panel aktualisieren
     if Assigned(SelectedUnitInfo(TreeBase)) then
       UpdateUnitInfoPanel(SelectedUnitInfo(TreeBase).UnitId)
     else if Assigned(SelectedUnitInfo(TreeTarget)) then
@@ -766,23 +956,29 @@ begin
     else
       ClearInfoPanel;
 
-    ShowStatus('Units getauscht.');
+    ShowStatus('Units getauscht (schnell).');
   except
     on E: Exception do
-      Application.MessageBox(PChar('Fehler beim Tauschen: ' + E.Message), 'Fehler', MB_ICONERROR);
+      Application.MessageBox(PChar('Fehler beim Tauschen: ' + E.Message),
+        'Fehler', MB_ICONERROR);
   end;
 end;
 
 procedure TFrmMain.BtnSaveAsClick(Sender: TObject);
 begin
   SaveDialog1.FilterIndex := 1; // Default auf .sav
-  if not SaveDialog1.Execute then Exit;
+  if not SaveDialog1.Execute then
+    Exit;
   try
+    if FSquadsDirty then
+      RebuildFCampaignFromSquads;
+
     FSave.SaveToSaveAs(SaveDialog1.FileName);
     ShowStatus('Gespeichert: ' + ExtractFileName(SaveDialog1.FileName));
   except
     on E: Exception do
-      Application.MessageBox(PChar('Fehler beim Speichern: ' + E.Message), 'Fehler', MB_ICONERROR);
+      Application.MessageBox(PChar('Fehler beim Speichern: ' + E.Message),
+        'Fehler', MB_ICONERROR);
   end;
 end;
 
@@ -797,7 +993,8 @@ var
   VeterancyText: string;
 begin
   SaveDialog1.FilterIndex := 2; // CSV auswählen
-  if not SaveDialog1.Execute then Exit;
+  if not SaveDialog1.Execute then
+    Exit;
   Csv := TStringList.Create;
   try
     Csv.Add('Squad;UnitId;Type;Name;Veterancy');
@@ -809,7 +1006,8 @@ begin
       begin
         try
           if IsEmptySlot(Units[J]) then
-            Line := Format('%s;%s;%s;%s;%s',[FAllSquadNames[I], Units[J], 'Empty', '[Leer]', ''])
+            Line := Format('%s;%s;%s;%s;%s', [FAllSquadNames[I], Units[J],
+              'Empty', '[Leer]', ''])
           else
           begin
             Info := FSave.GetUnitInfo(Units[J]);
@@ -827,11 +1025,13 @@ begin
               end;
             end;
 
-            Line := Format('%s;%s;%s;%s;%s',[FAllSquadNames[I], Units[J], Info.Kind, Info.Name, VeterancyText]);
+            Line := Format('%s;%s;%s;%s;%s', [FAllSquadNames[I], Units[J],
+              Info.Kind, Info.Name, VeterancyText]);
           end;
         except
           on E: Exception do
-            Line := Format('%s;%s;%s;%s;%s',[FAllSquadNames[I], Units[J], '?', '', '']);
+            Line := Format('%s;%s;%s;%s;%s', [FAllSquadNames[I], Units[J],
+              '?', '', '']);
         end;
         Csv.Add(Line);
       end;
@@ -846,6 +1046,21 @@ end;
 procedure TFrmMain.ShowStatus(const Msg: string);
 begin
   Caption := 'GOH Savegame Editor – ' + Msg;
+end;
+
+procedure TFrmMain.SwapUnitsInSquads(ASquadA, AUnitA: Integer;
+  ASquadB, AUnitB: Integer; const AUnitIdA, AUnitIdB: string);
+begin
+  // Units in FSquads tauschen
+  FSquads[ASquadA].UnitIds[AUnitA] := AUnitIdB;
+  FSquads[ASquadB].UnitIds[AUnitB] := AUnitIdA;
+
+  // Veterancy-Cache für beide Squads aktualisieren
+  UpdateSquadVeterancy(ASquadA);
+  if ASquadB <> ASquadA then
+    UpdateSquadVeterancy(ASquadB);
+
+  FSquadsDirty := True;
 end;
 
 end.

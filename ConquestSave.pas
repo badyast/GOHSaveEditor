@@ -75,13 +75,9 @@ type
     // index of line with '{CampaignSquads'
     function IsSquadLine(const S: string): Boolean;
     function SquadLineIndices: TArray<Integer>;
-    function GetSquadLine(Index: Integer): string;
-    procedure SetSquadLine(Index: Integer; const NewLine: string);
 
     // helpers for editing a squad line
     function ExtractUnitIdsFromSquadLine(const Line: string): TArray<string>;
-    function ReplaceUnitIdsInSquadLine(const Line: string;
-      const NewUnitIds: TArray<string>): string;
     function AppendUnitIdToSquadLine(const Line, UnitId: string): string;
     function RemoveUnitIdFromSquadLine(const Line, UnitId: string): string;
 
@@ -90,6 +86,10 @@ type
   public
     constructor Create;
     destructor Destroy; override;
+    function GetSquadLine(Index: Integer): string;
+    procedure SetSquadLine(Index: Integer; const NewLine: string);
+    function ReplaceUnitIdsInSquadLine(const Line: string;
+      const NewUnitIds: TArray<string>): string;
 
     // Loading & saving
     procedure LoadFromSave(const ASaveFile: string);
@@ -433,7 +433,8 @@ begin
   Result.Name := M.Groups[2].Value;
 end;
 
-function TConquestSave.ParseInventory(const UnitId: string): TArray<TInventoryItem>;
+function TConquestSave.ParseInventory(const UnitId: string)
+  : TArray<TInventoryItem>;
 var
   Text: string;
   M, ItemMatch: TMatch;
@@ -503,29 +504,36 @@ begin
     begin
       // Flexiblerer Item-RegEx der verschiedene Formate versteht
       // Grundformat: {item "name" [weitere_parameter] {cell x y} [optional {user "part"}]}
-      ItemRegex := '\{item\s+"([^"]+)"([^}]*?)\{cell\s+(\d+)\s+(\d+)\}([^}]*?)\}';
+      ItemRegex :=
+        '\{item\s+"([^"]+)"([^}]*?)\{cell\s+(\d+)\s+(\d+)\}([^}]*?)\}';
 
       for ItemMatch in TRegEx.Matches(InvBlock, ItemRegex) do
       begin
         Item.ItemName := ItemMatch.Groups[1].Value;
 
         // Parse die Zusatzparameter zwischen Item-Name und Cell
-        var ParamsPart := ItemMatch.Groups[2].Value.Trim;
-        var CellX := ItemMatch.Groups[3].Value;
-        var CellY := ItemMatch.Groups[4].Value;
-        var AfterCellPart := ItemMatch.Groups[5].Value.Trim;
+        var
+        ParamsPart := ItemMatch.Groups[2].Value.Trim;
+        var
+        CellX := ItemMatch.Groups[3].Value;
+        var
+        CellY := ItemMatch.Groups[4].Value;
+        var
+        AfterCellPart := ItemMatch.Groups[5].Value.Trim;
 
         // Item-Typ und Quantity aus den Parametern extrahieren
         Item.ItemType := '';
         Item.Quantity := 1;
 
         // Suche nach quoted strings für Typ
-        var TypeMatch := TRegEx.Match(ParamsPart, '"([^"]+)"');
+        var
+        TypeMatch := TRegEx.Match(ParamsPart, '"([^"]+)"');
         if TypeMatch.Success then
           Item.ItemType := TypeMatch.Groups[1].Value;
 
         // Suche nach Zahlen für Quantity
-        var QuantityMatch := TRegEx.Match(ParamsPart, '\b(\d+)\b');
+        var
+        QuantityMatch := TRegEx.Match(ParamsPart, '\b(\d+)\b');
         if QuantityMatch.Success then
           Item.Quantity := StrToIntDef(QuantityMatch.Groups[1].Value, 1);
 
@@ -551,13 +559,14 @@ var
   M: TMatch;
   Pattern: string;
 begin
-  Result := Default(TUnitDetails);
+  Result := Default (TUnitDetails);
   Result.UnitId := UnitId;
 
   Text := ReadAllText;
 
   // Haupt-Pattern für Human/Entity Block
-  Pattern := '\{(Human|Entity)\s+"([^"]+)"\s+' + TRegEx.Escape(UnitId) + '(.*?)\n\t\}';
+  Pattern := '\{(Human|Entity)\s+"([^"]+)"\s+' + TRegEx.Escape(UnitId) +
+    '(.*?)\n\t\}';
   M := TRegEx.Match(Text, Pattern, [roSingleLine]);
 
   if M.Success then
@@ -566,7 +575,8 @@ begin
     Result.UnitType := M.Groups[2].Value;
 
     // Extrahiere Details aus dem Block
-    var Block := M.Groups[3].Value;
+    var
+    Block := M.Groups[3].Value;
 
     // Position
     M := TRegEx.Match(Block, '\{Position\s+([-\d.]+)\s+([-\d.]+)\}');
@@ -582,7 +592,7 @@ begin
     M := TRegEx.Match(Block, '\{Score\s+([\d.]+)\}');
     if M.Success then
       Result.Score := StrToFloatDef(M.Groups[1].Value, 0,
-                                     FormatSettings.Invariant);
+        FormatSettings.Invariant);
 
     // InfantryKills
     M := TRegEx.Match(Block, '\{InfantryKills\s+(\d+)\}');
@@ -618,7 +628,8 @@ begin
       Result.FsmState := M.Groups[1].Value;
 
     // Unit Name aus GetUnitInfo
-    var Info := GetUnitInfo(UnitId);
+    var
+    Info := GetUnitInfo(UnitId);
     Result.Name := Info.Name;
 
     // Inventar
