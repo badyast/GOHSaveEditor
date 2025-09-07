@@ -24,6 +24,7 @@ type
     UnitIds: TArray<string>;
     UnitNames: TArray<string>; // ← NEU: Gecachte Namen
     UnitVeterancies: TArray<Integer>; // ← NEU: Gecachte Veteranenstufen
+    UnitKinds: TArray<string>;
     MaxVeterancy: Integer;
   end;
 
@@ -88,6 +89,8 @@ type
       ASquadB, AUnitB: Integer; const AUnitIdA, AUnitIdB: string);
     procedure RebuildFCampaignFromSquads;
     procedure UpdateSquadVeterancyFromCache(ASquadIndex: Integer);
+    procedure RestoreFocusToUnit(ATree: TTreeView; ASquadIndex: Integer;
+      const AUnitId: string);
   public
   end;
 
@@ -186,6 +189,7 @@ begin
     // Arrays für gecachte Daten vorbereiten
     SetLength(FSquads[I].UnitNames, Length(FSquads[I].UnitIds));
     SetLength(FSquads[I].UnitVeterancies, Length(FSquads[I].UnitIds));
+    SetLength(FSquads[I].UnitKinds, Length(FSquads[I].UnitIds));
 
     MaxVet := 0;
 
@@ -196,12 +200,14 @@ begin
       begin
         FSquads[I].UnitNames[J] := '[Leer]';
         FSquads[I].UnitVeterancies[J] := 0;
+        FSquads[I].UnitKinds[J] := 'Empty';
       end
       else
       begin
         try
           UnitInfo := FSave.GetUnitInfo(FSquads[I].UnitIds[J]);
           FSquads[I].UnitNames[J] := UnitInfo.Name;
+          FSquads[I].UnitKinds[J] := UnitInfo.Kind;
 
           // Veterancy nur für menschliche Einheiten
           if SameText(UnitInfo.Kind, 'Human') then
@@ -221,6 +227,7 @@ begin
         except
           FSquads[I].UnitNames[J] := '(Fehler)';
           FSquads[I].UnitVeterancies[J] := 0;
+          FSquads[I].UnitKinds[J] := 'Unknown';
         end;
       end;
     end;
@@ -660,7 +667,7 @@ begin
       end
       else
       begin
-        IsEntity := IsEntityUnit(FSquads[I].UnitIds[J]);
+        IsEntity := SameText(FSquads[I].UnitKinds[J], 'Entity'); // ← Aus Cache!
         if ChkOnlyHumans.Checked and IsEntity then
           Continue;
 
@@ -916,6 +923,89 @@ begin
   end;
 end;
 
+procedure TFrmMain.RestoreFocusToUnit(ATree: TTreeView; ASquadIndex: Integer;
+  const AUnitId: string);
+var
+  I: Integer;
+  Node, ChildNode: TTreeNode;
+  Info, ChildInfo: TNodeInfo;
+  DebugLog: TStringList;
+begin
+  DebugLog := TStringList.Create;
+  try
+    DebugLog.Add(Format('=== SUCHE Squad %d, Unit %s ===',
+      [ASquadIndex, AUnitId]));
+
+    // Erst den Squad finden und expandieren
+    for I := 0 to ATree.Items.Count - 1 do
+    begin
+      Node := ATree.Items[I];
+      if Assigned(Node.Data) then
+      begin
+        Info := TNodeInfo(Node.Data);
+        DebugLog.Add(Format('Squad %d gefunden, Text: "%s"',
+          [Info.SquadIndex, Node.Text]));
+
+        if (Info.Kind = nkSquad) and (Info.SquadIndex = ASquadIndex) then
+        begin
+          Node.Expand(False);
+          DebugLog.Add(Format('>>> ZIEL-SQUAD GEFUNDEN! Hat %d Kinder',
+            [Node.Count]));
+
+          // Jetzt die spezifische Unit in diesem Squad suchen
+          ChildNode := Node.getFirstChild;
+          while Assigned(ChildNode) do
+          begin
+            DebugLog.Add(Format('  Kind: "%s"', [ChildNode.Text]));
+
+            if Assigned(ChildNode.Data) then
+            begin
+              ChildInfo := TNodeInfo(ChildNode.Data);
+              DebugLog.Add
+                (Format('    Kind-UnitId: "%s", Suche: "%s", Match: %s',
+                [ChildInfo.UnitId, AUnitId, BoolToStr(SameText(ChildInfo.UnitId,
+                AUnitId), True)]));
+
+              if (ChildInfo.Kind = nkUnit) and
+                SameText(ChildInfo.UnitId, AUnitId) then
+              begin
+                DebugLog.Add('*** GEFUNDEN! Fokussiere Unit ***');
+
+                // Debug-Log ins Memo schreiben
+                MemoInfo.Lines.Clear;
+                MemoInfo.Lines.AddStrings(DebugLog);
+
+                ATree.Selected := ChildNode;
+                Exit;
+              end;
+            end;
+
+            ChildNode := ChildNode.getNextSibling;
+          end;
+
+          DebugLog.Add('>>> Unit nicht gefunden, fokussiere Squad');
+
+          // Debug-Log ins Memo schreiben
+          MemoInfo.Lines.Clear;
+          MemoInfo.Lines.AddStrings(DebugLog);
+
+          ATree.Selected := Node;
+          Exit;
+        end;
+      end;
+    end;
+
+    DebugLog.Add('>>> Squad nicht gefunden!');
+
+    // Debug-Log ins Memo schreiben
+    MemoInfo.Lines.Clear;
+    MemoInfo.Lines.AddStrings(DebugLog);
+
+  finally
+    DebugLog.Free;
+  end;
+end;
+
 procedure TFrmMain.BtnTransferClick(Sender: TObject);
 begin
   Application.MessageBox
@@ -1000,9 +1090,12 @@ begin
     // TreeViews schnell neu aufbauen (aus FSquads, nicht aus FCampaign!)
     UpdateTreeViewsFromSquads;
 
-    // Fokus auf die vorherigen Squads wiederherstellen
-    RestoreFocusToSquad(TreeBase, BaseSquadIndex);
-    RestoreFocusToSquad(TreeTarget, TargetSquadIndex);
+    // Fokus auf die getauschten Units wiederherstellen
+    // Nach dem Swap: A.UnitId ist jetzt in TargetSquad, B.UnitId ist jetzt in BaseSquad
+    RestoreFocusToUnit(TreeBase, BaseSquadIndex, A.UnitId);
+    // A ist jetzt in TreeBase
+    RestoreFocusToUnit(TreeTarget, TargetSquadIndex, B.UnitId);
+    // B ist jetzt in TreeTarget
 
     // Info-Panel aktualisieren
     if Assigned(SelectedUnitInfo(TreeBase)) then
@@ -1112,14 +1205,23 @@ begin
   FSquads[ASquadB].UnitIds[AUnitB] := AUnitIdA;
 
   // AUCH die gecachten Namen und Veteranenstufen tauschen!
-  var TempName := FSquads[ASquadA].UnitNames[AUnitA];
-  var TempVet := FSquads[ASquadA].UnitVeterancies[AUnitA];
+  // AUCH die gecachten Namen, Veteranenstufen und Kinds tauschen!
+  var
+  TempName := FSquads[ASquadA].UnitNames[AUnitA];
+  var
+  TempVet := FSquads[ASquadA].UnitVeterancies[AUnitA];
+  var
+  TempKind := FSquads[ASquadA].UnitKinds[AUnitA]; // ← NEU
 
   FSquads[ASquadA].UnitNames[AUnitA] := FSquads[ASquadB].UnitNames[AUnitB];
-  FSquads[ASquadA].UnitVeterancies[AUnitA] := FSquads[ASquadB].UnitVeterancies[AUnitB];
+  FSquads[ASquadA].UnitVeterancies[AUnitA] := FSquads[ASquadB]
+    .UnitVeterancies[AUnitB];
+  FSquads[ASquadA].UnitKinds[AUnitA] := FSquads[ASquadB].UnitKinds[AUnitB];
+  // ← NEU
 
   FSquads[ASquadB].UnitNames[AUnitB] := TempName;
   FSquads[ASquadB].UnitVeterancies[AUnitB] := TempVet;
+  FSquads[ASquadB].UnitKinds[AUnitB] := TempKind; // ← NEU
 
   // Squad-Veterancy neu berechnen (nur aus Cache!)
   UpdateSquadVeterancyFromCache(ASquadA);

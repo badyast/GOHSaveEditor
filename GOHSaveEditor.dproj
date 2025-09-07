@@ -3,7 +3,7 @@
         <ProjectGuid>{8CE7DC97-48D8-4FC9-A07F-2BC747BE8789}</ProjectGuid>
         <MainSource>GOHSaveEditor.dpr</MainSource>
         <Base>True</Base>
-        <Config Condition="'$(Config)'==''">Release</Config>
+        <Config Condition="'$(Config)'==''">Debug</Config>
         <ProjectName Condition="'$(ProjectName)'==''">GOHSaveEditor</ProjectName>
         <TargetedPlatforms>3</TargetedPlatforms>
         <AppType>Application</AppType>
