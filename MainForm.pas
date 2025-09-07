@@ -47,6 +47,8 @@ type
     TabInventory: TTabSheet;
     MemoInfo: TMemo;
     ListViewInventory: TListView;
+    TabDebug: TTabSheet;
+    MemoDebug: TMemo;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
@@ -972,10 +974,11 @@ begin
                 DebugLog.Add('*** GEFUNDEN! Fokussiere Unit ***');
 
                 // Debug-Log ins Memo schreiben
-                MemoInfo.Lines.Clear;
-                MemoInfo.Lines.AddStrings(DebugLog);
+                MemoDebug.Lines.Clear;
+                MemoDebug.Lines.AddStrings(DebugLog);
 
-                ATree.Selected := ChildNode;
+//                ATree.Selected := ChildNode;   Erst mal so
+                ATree.Selected := Node;
                 Exit;
               end;
             end;
@@ -986,8 +989,8 @@ begin
           DebugLog.Add('>>> Unit nicht gefunden, fokussiere Squad');
 
           // Debug-Log ins Memo schreiben
-          MemoInfo.Lines.Clear;
-          MemoInfo.Lines.AddStrings(DebugLog);
+          MemoDebug.Lines.Clear;
+          MemoDebug.Lines.AddStrings(DebugLog);
 
           ATree.Selected := Node;
           Exit;
@@ -998,8 +1001,8 @@ begin
     DebugLog.Add('>>> Squad nicht gefunden!');
 
     // Debug-Log ins Memo schreiben
-    MemoInfo.Lines.Clear;
-    MemoInfo.Lines.AddStrings(DebugLog);
+    MemoDebug.Lines.Clear;
+    MemoDebug.Lines.AddStrings(DebugLog);
 
   finally
     DebugLog.Free;

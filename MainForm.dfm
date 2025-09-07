@@ -122,7 +122,7 @@ object FrmMain: TFrmMain
     Top = 408
     Width = 860
     Height = 192
-    ActivePage = TabInventory
+    ActivePage = TabDebug
     Align = alBottom
     TabOrder = 8
     object TabGeneral: TTabSheet
@@ -185,6 +185,21 @@ object FrmMain: TFrmMain
         ParentFont = False
         TabOrder = 0
         ViewStyle = vsReport
+      end
+    end
+    object TabDebug: TTabSheet
+      Caption = 'Debug'
+      ImageIndex = 2
+      object MemoDebug: TMemo
+        Left = 0
+        Top = 0
+        Width = 852
+        Height = 162
+        Align = alClient
+        Lines.Strings = (
+          'MemoDebug')
+        ScrollBars = ssBoth
+        TabOrder = 0
       end
     end
   end
