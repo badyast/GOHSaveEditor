@@ -22,7 +22,9 @@ type
   TSquadData = record
     Name: string;
     UnitIds: TArray<string>;
-    MaxVeterancy: Integer; // Gecachter Wert
+    UnitNames: TArray<string>; // ← NEU: Gecachte Namen
+    UnitVeterancies: TArray<Integer>; // ← NEU: Gecachte Veteranenstufen
+    MaxVeterancy: Integer;
   end;
 
   TFrmMain = class(TForm)
@@ -85,6 +87,7 @@ type
     procedure SwapUnitsInSquads(ASquadA, AUnitA: Integer;
       ASquadB, AUnitB: Integer; const AUnitIdA, AUnitIdB: string);
     procedure RebuildFCampaignFromSquads;
+    procedure UpdateSquadVeterancyFromCache(ASquadIndex: Integer);
   public
   end;
 
@@ -168,7 +171,9 @@ procedure TFrmMain.LoadSquadsFromSave;
 var
   I, J: Integer;
   SquadNames: TArray<string>;
-  Units: TArray<string>;
+  UnitInfo: TUnitInfo;
+  UnitDetails: TUnitDetails;
+  MaxVet: Integer;
 begin
   SquadNames := FSave.GetSquadNames;
   SetLength(FSquads, Length(SquadNames));
@@ -177,7 +182,50 @@ begin
   begin
     FSquads[I].Name := SquadNames[I];
     FSquads[I].UnitIds := FSave.GetSquadMembers(I);
-    FSquads[I].MaxVeterancy := GetSquadMaxVeterancy(I);
+
+    // Arrays für gecachte Daten vorbereiten
+    SetLength(FSquads[I].UnitNames, Length(FSquads[I].UnitIds));
+    SetLength(FSquads[I].UnitVeterancies, Length(FSquads[I].UnitIds));
+
+    MaxVet := 0;
+
+    // Alle Unit-Daten EINMAL laden und cachen
+    for J := 0 to Length(FSquads[I].UnitIds) - 1 do
+    begin
+      if IsEmptySlot(FSquads[I].UnitIds[J]) then
+      begin
+        FSquads[I].UnitNames[J] := '[Leer]';
+        FSquads[I].UnitVeterancies[J] := 0;
+      end
+      else
+      begin
+        try
+          UnitInfo := FSave.GetUnitInfo(FSquads[I].UnitIds[J]);
+          FSquads[I].UnitNames[J] := UnitInfo.Name;
+
+          // Veterancy nur für menschliche Einheiten
+          if SameText(UnitInfo.Kind, 'Human') then
+          begin
+            try
+              UnitDetails := FSave.GetUnitDetails(FSquads[I].UnitIds[J]);
+              FSquads[I].UnitVeterancies[J] := UnitDetails.Veterancy;
+              if UnitDetails.Veterancy > MaxVet then
+                MaxVet := UnitDetails.Veterancy;
+            except
+              FSquads[I].UnitVeterancies[J] := 0;
+            end;
+          end
+          else
+            FSquads[I].UnitVeterancies[J] := 0;
+
+        except
+          FSquads[I].UnitNames[J] := '(Fehler)';
+          FSquads[I].UnitVeterancies[J] := 0;
+        end;
+      end;
+    end;
+
+    FSquads[I].MaxVeterancy := MaxVet;
   end;
 
   FSquadsDirty := False;
@@ -581,7 +629,7 @@ var
   Info: TNodeInfo;
   UnitCaption, SquadCaption: string;
   IsEntity, IsEmpty: Boolean;
-  SquadVeterancyText: string;
+  SquadVeterancyText, UnitVeterancyText: string;
 begin
   ClearTreeData(TreeBase);
   ClearTreeData(TreeTarget);
@@ -615,7 +663,15 @@ begin
         IsEntity := IsEntityUnit(FSquads[I].UnitIds[J]);
         if ChkOnlyHumans.Checked and IsEntity then
           Continue;
-        UnitCaption := GetUnitDisplayName(FSquads[I].UnitIds[J]);
+
+        // CACHED DATEN verwenden - KEIN PARSING!
+        UnitCaption := FSquads[I].UnitIds[J];
+        if FSquads[I].UnitNames[J] <> '' then
+          UnitCaption := UnitCaption + ' – ' + FSquads[I].UnitNames[J];
+
+        // Veterancy aus Cache
+        UnitVeterancyText := GetVeterancyDisplay(FSquads[I].UnitVeterancies[J]);
+        UnitCaption := UnitCaption + UnitVeterancyText;
       end;
 
       Info := TNodeInfo.Create;
@@ -1055,12 +1111,33 @@ begin
   FSquads[ASquadA].UnitIds[AUnitA] := AUnitIdB;
   FSquads[ASquadB].UnitIds[AUnitB] := AUnitIdA;
 
-  // Veterancy-Cache für beide Squads aktualisieren
-  UpdateSquadVeterancy(ASquadA);
+  // AUCH die gecachten Namen und Veteranenstufen tauschen!
+  var TempName := FSquads[ASquadA].UnitNames[AUnitA];
+  var TempVet := FSquads[ASquadA].UnitVeterancies[AUnitA];
+
+  FSquads[ASquadA].UnitNames[AUnitA] := FSquads[ASquadB].UnitNames[AUnitB];
+  FSquads[ASquadA].UnitVeterancies[AUnitA] := FSquads[ASquadB].UnitVeterancies[AUnitB];
+
+  FSquads[ASquadB].UnitNames[AUnitB] := TempName;
+  FSquads[ASquadB].UnitVeterancies[AUnitB] := TempVet;
+
+  // Squad-Veterancy neu berechnen (nur aus Cache!)
+  UpdateSquadVeterancyFromCache(ASquadA);
   if ASquadB <> ASquadA then
-    UpdateSquadVeterancy(ASquadB);
+    UpdateSquadVeterancyFromCache(ASquadB);
 
   FSquadsDirty := True;
+end;
+
+procedure TFrmMain.UpdateSquadVeterancyFromCache(ASquadIndex: Integer);
+var
+  I, MaxVet: Integer;
+begin
+  MaxVet := 0;
+  for I := 0 to Length(FSquads[ASquadIndex].UnitVeterancies) - 1 do
+    if FSquads[ASquadIndex].UnitVeterancies[I] > MaxVet then
+      MaxVet := FSquads[ASquadIndex].UnitVeterancies[I];
+  FSquads[ASquadIndex].MaxVeterancy := MaxVet;
 end;
 
 end.
