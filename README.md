@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 ![Status](https://img.shields.io/badge/status-active-success.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20MacOS-lightgrey.svg)
-[![Buy Me a Coffee](https://img.shields.io/badge/☕-Buy%20me%20a%20coffee-orange.svg)](https://www.buymeacoffee.com/deinname)
+[![Buy Me a Coffee](https://img.shields.io/badge/☕-Buy%20me%20a%20coffee-orange.svg)](https://www.buymeacoffee.com/badyast)
 
 Ein inoffizieller Editor für Spielstände von **Gates of Hell: Ostfront**.  
 Mit diesem Tool kannst du deine Savegames bequem laden, ändern und wieder speichern.  
