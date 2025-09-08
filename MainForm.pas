@@ -1,4 +1,5 @@
-﻿unit MainForm;
+﻿           { TODO 1 -oDaniel -cVital : Problem mit Statusdatei und Name des Spielstands lösen }
+unit MainForm;
 
 interface
 
