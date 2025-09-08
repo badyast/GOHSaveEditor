@@ -2,7 +2,7 @@ object FrmMain: TFrmMain
   Left = 0
   Top = 0
   Caption = 'GOH Savegame Editor'
-  ClientHeight = 600
+  ClientHeight = 640
   ClientWidth = 860
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -34,6 +34,20 @@ object FrmMain: TFrmMain
     Width = 109
     Height = 15
     Caption = 'Ziel: (keine Auswahl)'
+  end
+  object LblStatus: TLabel
+    Left = 16
+    Top = 410
+    Width = 72
+    Height = 15
+    Caption = 'Lade Daten...'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clNavy
+    Font.Height = -12
+    Font.Name = 'Segoe UI'
+    Font.Style = [fsBold]
+    ParentFont = False
+    Visible = False
   end
   object BtnOpen: TButton
     Left = 16
@@ -117,14 +131,22 @@ object FrmMain: TFrmMain
     TabOrder = 7
     OnClick = ChkOnlyHumansClick
   end
+  object ProgressBar1: TProgressBar
+    Left = 344
+    Top = 407
+    Width = 400
+    Height = 17
+    TabOrder = 8
+    Visible = False
+  end
   object PageControl1: TPageControl
     Left = 0
-    Top = 408
+    Top = 448
     Width = 860
     Height = 192
-    ActivePage = TabDebug
+    ActivePage = TabGeneral
     Align = alBottom
-    TabOrder = 8
+    TabOrder = 9
     object TabGeneral: TTabSheet
       Caption = 'Allgemein'
       object MemoInfo: TMemo

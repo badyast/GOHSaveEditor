@@ -49,6 +49,9 @@ type
     ListViewInventory: TListView;
     TabDebug: TTabSheet;
     MemoDebug: TMemo;
+    // ← NEU: Komponenten für Ladefortschritt
+    ProgressBar1: TProgressBar;
+    LblStatus: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
@@ -93,6 +96,12 @@ type
     procedure UpdateSquadVeterancyFromCache(ASquadIndex: Integer);
     procedure RestoreFocusToUnit(ATree: TTreeView; ASquadIndex: Integer;
       const AUnitId: string);
+
+    // ← NEU: Fortschritts- und Status-Methoden
+    procedure ShowProgress(const AMessage: string; AMaxValue: Integer = 0);
+    procedure UpdateProgress(ACurrentValue: Integer; const AMessage: string = '');
+    procedure HideProgress;
+    procedure SetUILoadingState(ALoading: Boolean);
   public
   end;
 
@@ -124,6 +133,77 @@ begin
 
   // Ersten Tab aktivieren
   PageControl1.ActivePageIndex := 0;
+
+  // ← NEU: Fortschrittsanzeige initial verstecken
+  HideProgress;
+end;
+
+// ← NEU: Fortschritts-Methoden
+procedure TFrmMain.ShowProgress(const AMessage: string; AMaxValue: Integer = 0);
+begin
+  LblStatus.Caption := AMessage;
+  LblStatus.Visible := True;
+
+  if AMaxValue > 0 then
+  begin
+    ProgressBar1.Max := AMaxValue;
+    ProgressBar1.Position := 0;
+    ProgressBar1.Style := pbstNormal;
+  end
+  else
+  begin
+    // Unbestimmter Fortschritt (Marquee-Style)
+    ProgressBar1.Style := pbstMarquee;
+  end;
+
+  ProgressBar1.Visible := True;
+
+  // UI aktualisieren damit die Änderungen sofort sichtbar sind
+  Application.ProcessMessages;
+end;
+
+procedure TFrmMain.UpdateProgress(ACurrentValue: Integer; const AMessage: string = '');
+begin
+  if AMessage <> '' then
+    LblStatus.Caption := AMessage;
+
+  if ProgressBar1.Style = pbstNormal then
+    ProgressBar1.Position := ACurrentValue;
+
+  // UI-Updates alle 10 Schritte oder bei wichtigen Meilensteinen
+  if (ACurrentValue mod 10 = 0) or (AMessage <> '') then
+    Application.ProcessMessages;
+end;
+
+procedure TFrmMain.HideProgress;
+begin
+  ProgressBar1.Visible := False;
+  LblStatus.Visible := False;
+  LblStatus.Caption := '';
+end;
+
+procedure TFrmMain.SetUILoadingState(ALoading: Boolean);
+begin
+  // Alle Hauptcontrols während des Ladens deaktivieren
+  BtnOpen.Enabled := not ALoading;
+  TreeBase.Enabled := not ALoading;
+  TreeTarget.Enabled := not ALoading;
+  ChkOnlyHumans.Enabled := not ALoading;
+  BtnTransfer.Enabled := not ALoading;
+  BtnSwap.Enabled := not ALoading;
+  BtnSaveAs.Enabled := not ALoading;
+  BtnExportCsv.Enabled := not ALoading;
+
+  if ALoading then
+  begin
+    Screen.Cursor := crHourGlass;
+    Caption := 'GOH Savegame Editor - Lade...';
+  end
+  else
+  begin
+    Screen.Cursor := crDefault;
+    Caption := 'GOH Savegame Editor';
+  end;
 end;
 
 procedure TFrmMain.FormDestroy(Sender: TObject);
@@ -179,12 +259,24 @@ var
   UnitInfo: TUnitInfo;
   UnitDetails: TUnitDetails;
   MaxVet: Integer;
+  TotalUnits, ProcessedUnits: Integer;
 begin
   SquadNames := FSave.GetSquadNames;
   SetLength(FSquads, Length(SquadNames));
 
+  // ← NEU: Gesamtanzahl der Units für Fortschrittsanzeige berechnen
+  TotalUnits := 0;
+  for I := 0 to Length(SquadNames) - 1 do
+    TotalUnits := TotalUnits + Length(FSave.GetSquadMembers(I));
+
+  ProcessedUnits := 0;
+  ShowProgress('Lade Unit-Daten...', TotalUnits);
+
   for I := 0 to Length(SquadNames) - 1 do
   begin
+    UpdateProgress(ProcessedUnits, Format('Verarbeite Squad %d/%d: %s',
+      [I + 1, Length(SquadNames), SquadNames[I]]));
+
     FSquads[I].Name := SquadNames[I];
     FSquads[I].UnitIds := FSave.GetSquadMembers(I);
 
@@ -198,6 +290,8 @@ begin
     // Alle Unit-Daten EINMAL laden und cachen
     for J := 0 to Length(FSquads[I].UnitIds) - 1 do
     begin
+      Inc(ProcessedUnits);
+
       if IsEmptySlot(FSquads[I].UnitIds[J]) then
       begin
         FSquads[I].UnitNames[J] := '[Leer]';
@@ -232,12 +326,19 @@ begin
           FSquads[I].UnitKinds[J] := 'Unknown';
         end;
       end;
+
+      // ← NEU: Fortschritt alle 25 Units oder am Ende jedes Squads aktualisieren
+      if (ProcessedUnits mod 25 = 0) or (J = Length(FSquads[I].UnitIds) - 1) then
+        UpdateProgress(ProcessedUnits);
     end;
 
     FSquads[I].MaxVeterancy := MaxVet;
   end;
 
   FSquadsDirty := False;
+
+  // ← NEU: Fortschritt verstecken
+  HideProgress;
 end;
 
 function TFrmMain.IsEntityUnit(const UnitId: string): Boolean;
@@ -523,22 +624,39 @@ procedure TFrmMain.BtnOpenClick(Sender: TObject);
 begin
   if not OpenDialog1.Execute then
     Exit;
+
+  // ← NEU: UI in Ladezustand versetzen
+  SetUILoadingState(True);
+
   try
+    ShowProgress('Lade Savegame...');
+
     FSave.LoadFromSave(OpenDialog1.FileName);
     LblSave.Caption := ExtractFileName(OpenDialog1.FileName);
+
+    // LoadSquadsFromSave zeigt seinen eigenen Fortschritt an
     LoadSquadsFromSave;
+
+    ShowProgress('Erstelle Baumansicht...');
     UpdateTreeViewsFromSquads;
+
     SetControlsEnabled(True);
-    ShowStatus('Save geladen.');
+    ShowStatus('Save geladen: ' + ExtractFileName(OpenDialog1.FileName));
     ClearInfoPanel;
+
   except
     on E: Exception do
     begin
       SetControlsEnabled(False);
+      ShowStatus('Fehler beim Laden!');
       Application.MessageBox(PChar('Fehler beim Laden: ' + E.Message), 'Fehler',
         MB_ICONERROR);
     end;
   end;
+
+  // ← NEU: UI wieder in normalen Zustand versetzen
+  SetUILoadingState(False);
+  HideProgress;
 end;
 
 procedure TFrmMain.UpdateInfoLabels;
@@ -1108,7 +1226,7 @@ begin
     else
       ClearInfoPanel;
 
-    ShowStatus('Units getauscht (schnell).');
+    ShowStatus('Units getauscht.');
   except
     on E: Exception do
       Application.MessageBox(PChar('Fehler beim Tauschen: ' + E.Message),
@@ -1121,17 +1239,74 @@ begin
   SaveDialog1.FilterIndex := 1; // Default auf .sav
   if not SaveDialog1.Execute then
     Exit;
+
+  // ← NEU: Kurzes Feedback ohne Fortschrittsanzeige
+  Screen.Cursor := crHourGlass;
+  BtnSaveAs.Enabled := False;
+
   try
     if FSquadsDirty then
       RebuildFCampaignFromSquads;
 
     FSave.SaveToSaveAs(SaveDialog1.FileName);
-    ShowStatus('Gespeichert: ' + ExtractFileName(SaveDialog1.FileName));
+
+    // ← NEU: Erfolgreiche Speicherung mit kurzem visuellen Feedback
+    ShowStatus('✓ Erfolgreich gespeichert: ' + ExtractFileName(SaveDialog1.FileName));
+
+    // Kurz grünes Feedback im Status-Label anzeigen
+    LblStatus.Caption := '✓ Datei erfolgreich gespeichert!';
+    LblStatus.Font.Color := clGreen;
+    LblStatus.Visible := True;
+
+    // Nach 2 Sekunden automatisch ausblenden
+    TThread.CreateAnonymousThread(
+      procedure
+      begin
+        Sleep(2000);
+        TThread.Synchronize(nil,
+          procedure
+          begin
+            if LblStatus.Visible and (LblStatus.Font.Color = clGreen) then
+            begin
+              LblStatus.Visible := False;
+              LblStatus.Font.Color := clNavy; // Zurück zur Standard-Farbe
+            end;
+          end);
+      end).Start;
+
   except
     on E: Exception do
+    begin
+      ShowStatus('Fehler beim Speichern!');
+
+      // Rotes Fehler-Feedback
+      LblStatus.Caption := '✗ Fehler beim Speichern!';
+      LblStatus.Font.Color := clRed;
+      LblStatus.Visible := True;
+
       Application.MessageBox(PChar('Fehler beim Speichern: ' + E.Message),
         'Fehler', MB_ICONERROR);
+
+      // Fehler-Label nach 3 Sekunden ausblenden
+      TThread.CreateAnonymousThread(
+        procedure
+        begin
+          Sleep(3000);
+          TThread.Synchronize(nil,
+            procedure
+            begin
+              if LblStatus.Visible and (LblStatus.Font.Color = clRed) then
+              begin
+                LblStatus.Visible := False;
+                LblStatus.Font.Color := clNavy;
+              end;
+            end);
+        end).Start;
+    end;
   end;
+
+  Screen.Cursor := crDefault;
+  BtnSaveAs.Enabled := True;
 end;
 
 procedure TFrmMain.BtnExportCsvClick(Sender: TObject);
@@ -1147,12 +1322,22 @@ begin
   SaveDialog1.FilterIndex := 2; // CSV auswählen
   if not SaveDialog1.Execute then
     Exit;
+
+  // ← NEU: UI während Export blockieren
+  SetUILoadingState(True);
+  ShowProgress('Exportiere CSV-Datei...');
+
   Csv := TStringList.Create;
   try
     Csv.Add('Squad;UnitId;Type;Name;Veterancy');
     FAllSquadNames := FSave.GetSquadNames;
+
+    ShowProgress('Exportiere CSV-Datei...', Length(FAllSquadNames));
+
     for I := 0 to Length(FAllSquadNames) - 1 do
     begin
+      UpdateProgress(I, Format('Verarbeite Squad %d/%d...', [I + 1, Length(FAllSquadNames)]));
+
       Units := FSave.GetSquadMembers(I);
       for J := 0 to Length(Units) - 1 do
       begin
@@ -1188,10 +1373,14 @@ begin
         Csv.Add(Line);
       end;
     end;
+
+    UpdateProgress(Length(FAllSquadNames), 'Schreibe CSV-Datei...');
     Csv.SaveToFile(SaveDialog1.FileName, TEncoding.UTF8);
     ShowStatus('CSV exportiert: ' + ExtractFileName(SaveDialog1.FileName));
   finally
     Csv.Free;
+    SetUILoadingState(False);
+    HideProgress;
   end;
 end;
 
@@ -1207,24 +1396,22 @@ begin
   FSquads[ASquadA].UnitIds[AUnitA] := AUnitIdB;
   FSquads[ASquadB].UnitIds[AUnitB] := AUnitIdA;
 
-  // AUCH die gecachten Namen und Veteranenstufen tauschen!
   // AUCH die gecachten Namen, Veteranenstufen und Kinds tauschen!
   var
   TempName := FSquads[ASquadA].UnitNames[AUnitA];
   var
   TempVet := FSquads[ASquadA].UnitVeterancies[AUnitA];
   var
-  TempKind := FSquads[ASquadA].UnitKinds[AUnitA]; // ← NEU
+  TempKind := FSquads[ASquadA].UnitKinds[AUnitA];
 
   FSquads[ASquadA].UnitNames[AUnitA] := FSquads[ASquadB].UnitNames[AUnitB];
   FSquads[ASquadA].UnitVeterancies[AUnitA] := FSquads[ASquadB]
     .UnitVeterancies[AUnitB];
   FSquads[ASquadA].UnitKinds[AUnitA] := FSquads[ASquadB].UnitKinds[AUnitB];
-  // ← NEU
 
   FSquads[ASquadB].UnitNames[AUnitB] := TempName;
   FSquads[ASquadB].UnitVeterancies[AUnitB] := TempVet;
-  FSquads[ASquadB].UnitKinds[AUnitB] := TempKind; // ← NEU
+  FSquads[ASquadB].UnitKinds[AUnitB] := TempKind;
 
   // Squad-Veterancy neu berechnen (nur aus Cache!)
   UpdateSquadVeterancyFromCache(ASquadA);
