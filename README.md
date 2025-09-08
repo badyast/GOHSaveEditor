@@ -40,7 +40,7 @@ Die Nutzung geschieht auf eigene Verantwortung.
 Dieses Projekt ist ein reines **Hobby-Projekt** und wird kostenlos zur Verfügung gestellt.  
 Wenn dir der Editor gefällt und du die Entwicklung unterstützen möchtest, kannst du mir freiwillig einen Kaffee spendieren:
 
-👉 [Buy Me a Coffee](https://www.buymeacoffee.com/deinname)  
+👉 [Buy Me a Coffee](https://www.buymeacoffee.com/badyast)  
 
 Danke für jede Unterstützung! ❤️
 
