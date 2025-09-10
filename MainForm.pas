@@ -1,9 +1,10 @@
-﻿           { TODO 1 -oDaniel -cVital : Problem mit Statusdatei und Name des Spielstands lösen }
+﻿{ TODO 1 -oDaniel -cVital : Problem mit Statusdatei und Name des Spielstands lösen }
 unit MainForm;
 
 interface
 
 uses
+  ujachLogAuto, ujachLogMgr,
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
   System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
@@ -100,7 +101,8 @@ type
 
     // ← NEU: Fortschritts- und Status-Methoden
     procedure ShowProgress(const AMessage: string; AMaxValue: Integer = 0);
-    procedure UpdateProgress(ACurrentValue: Integer; const AMessage: string = '');
+    procedure UpdateProgress(ACurrentValue: Integer;
+      const AMessage: string = '');
     procedure HideProgress;
     procedure SetUILoadingState(ALoading: Boolean);
   public
@@ -115,6 +117,7 @@ implementation
 
 procedure TFrmMain.FormCreate(Sender: TObject);
 begin
+  jachLog.LogInfo('=== GOH Save Editor gestartet ===');
   FSave := TConquestSave.Create;
   SetControlsEnabled(False);
 
@@ -163,7 +166,8 @@ begin
   Application.ProcessMessages;
 end;
 
-procedure TFrmMain.UpdateProgress(ACurrentValue: Integer; const AMessage: string = '');
+procedure TFrmMain.UpdateProgress(ACurrentValue: Integer;
+  const AMessage: string = '');
 begin
   if AMessage <> '' then
     LblStatus.Caption := AMessage;
@@ -212,6 +216,7 @@ begin
   ClearTreeData(TreeBase);
   ClearTreeData(TreeTarget);
   FSave.Free;
+  jachLog.LogInfo('=== GOH Save Editor beendet ===');
 end;
 
 procedure TFrmMain.SetControlsEnabled(AEnabled: Boolean);
@@ -329,7 +334,8 @@ begin
       end;
 
       // ← NEU: Fortschritt alle 25 Units oder am Ende jedes Squads aktualisieren
-      if (ProcessedUnits mod 25 = 0) or (J = Length(FSquads[I].UnitIds) - 1) then
+      if (ProcessedUnits mod 25 = 0) or (J = Length(FSquads[I].UnitIds) - 1)
+      then
         UpdateProgress(ProcessedUnits);
     end;
 
@@ -1096,7 +1102,7 @@ begin
                 MemoDebug.Lines.Clear;
                 MemoDebug.Lines.AddStrings(DebugLog);
 
-//                ATree.Selected := ChildNode;   Erst mal so
+                // ATree.Selected := ChildNode;   Erst mal so
                 ATree.Selected := Node;
                 Exit;
               end;
@@ -1252,7 +1258,8 @@ begin
     FSave.SaveToSaveAs(SaveDialog1.FileName);
 
     // ← NEU: Erfolgreiche Speicherung mit kurzem visuellen Feedback
-    ShowStatus('✓ Erfolgreich gespeichert: ' + ExtractFileName(SaveDialog1.FileName));
+    ShowStatus('✓ Erfolgreich gespeichert: ' +
+      ExtractFileName(SaveDialog1.FileName));
 
     // Kurz grünes Feedback im Status-Label anzeigen
     LblStatus.Caption := '✓ Datei erfolgreich gespeichert!';
@@ -1337,7 +1344,8 @@ begin
 
     for I := 0 to Length(FAllSquadNames) - 1 do
     begin
-      UpdateProgress(I, Format('Verarbeite Squad %d/%d...', [I + 1, Length(FAllSquadNames)]));
+      UpdateProgress(I, Format('Verarbeite Squad %d/%d...',
+        [I + 1, Length(FAllSquadNames)]));
 
       Units := FSave.GetSquadMembers(I);
       for J := 0 to Length(Units) - 1 do
@@ -1391,7 +1399,7 @@ begin
 end;
 
 procedure TFrmMain.SwapUnitsInSquads(ASquadA, AUnitA: Integer;
-  ASquadB, AUnitB: Integer; const AUnitIdA, AUnitIdB: string);
+ASquadB, AUnitB: Integer; const AUnitIdA, AUnitIdB: string);
 begin
   // Units in FSquads tauschen
   FSquads[ASquadA].UnitIds[AUnitA] := AUnitIdB;

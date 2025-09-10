@@ -2,7 +2,8 @@
 
 uses
   Vcl.Forms,
-  MainForm in 'MainForm.pas' {FrmMain},
+  ujachLogAuto, ujachLogMgr,
+  MainForm in 'MainForm.pas' {FrmMain} ,
   ConquestSave in 'ConquestSave.pas';
 
 {$R *.res}
@@ -12,4 +13,5 @@ begin
   Application.MainFormOnTaskbar := True;
   Application.CreateForm(TFrmMain, FrmMain);
   Application.Run;
+
 end.
