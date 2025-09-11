@@ -1439,31 +1439,81 @@ begin
 end;
 
 procedure TFrmMain.BtnSaveAsClick(Sender: TObject);
+var
+  FileSizeKB: Int64;
+  StartTime: TDateTime;
+  ElapsedMs: Integer;
+  FileName: string;
 begin
-  SaveDialog1.FilterIndex := 1; // Default auf .sav
-  if not SaveDialog1.Execute then
-    Exit;
+  jachLog.LogDebug('Benutzer klickte "Speichern als" Button');
 
-  // ← NEU: Kurzes Feedback ohne Fortschrittsanzeige
+  SaveDialog1.FilterIndex := 1;
+  if not SaveDialog1.Execute then
+  begin
+    jachLog.LogDebug('Benutzer hat Speichern-Dialog abgebrochen');
+    Exit;
+  end;
+
+  FileName := SaveDialog1.FileName;
+  StartTime := Now;
+
+  jachLog.LogInfo('=== SPEICHER-OPERATION gestartet ===');
+  jachLog.LogInfo('Zieldatei: %s', [FileName]);
+
+  if TFile.Exists(FileName) then
+    jachLog.LogInfo('Überschreibe existierende Datei: %s', [FileName])
+  else
+    jachLog.LogInfo('Erstelle neue Datei: %s', [FileName]);
+
   Screen.Cursor := crHourGlass;
   BtnSaveAs.Enabled := False;
+  jachLog.LogDebug('UI in Speicher-Zustand versetzt');
 
   try
     if FSquadsDirty then
+    begin
+      jachLog.LogInfo('Squad-Daten wurden geändert, aktualisiere Campaign-Daten');
       RebuildFCampaignFromSquads;
+      jachLog.LogDebug('Campaign-Daten erfolgreich aktualisiert');
+    end
+    else
+    begin
+      jachLog.LogDebug('Squad-Daten unverändert, keine Campaign-Aktualisierung erforderlich');
+    end;
 
-    FSave.SaveToSaveAs(SaveDialog1.FileName);
+    jachLog.LogDebug('Rufe FSave.SaveToSaveAs auf');
+    FSave.SaveToSaveAs(FileName);
+    jachLog.LogInfo('Savegame erfolgreich geschrieben');
 
-    // ← NEU: Erfolgreiche Speicherung mit kurzem visuellen Feedback
-    ShowStatus('✓ Erfolgreich gespeichert: ' +
-      ExtractFileName(SaveDialog1.FileName));
+    // Erfolgsstatistiken
+    try
+      FileSizeKB := TFile.GetSize(FileName) div 1024;
+      ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
+      jachLog.LogInfo('SPEICHER-OPERATION erfolgreich abgeschlossen:');
+      jachLog.LogInfo('- Datei: %s', [ExtractFileName(FileName)]);
+      jachLog.LogInfo('- Größe: %d KB (%.2f MB)', [FileSizeKB, FileSizeKB / 1024]);
+      jachLog.LogInfo('- Dauer: %d ms', [ElapsedMs]);
 
-    // Kurz grünes Feedback im Status-Label anzeigen
+      if ElapsedMs > 5000 then
+        jachLog.LogWarning('Langsame Speicher-Performance: %d ms (> 5s)', [ElapsedMs]);
+
+    except
+      on E: Exception do
+      begin
+        jachLog.LogWarning('Konnte Statistiken nach Speichern nicht ermitteln: %s', [E.Message]);
+        jachLog.LogInfo('SPEICHER-OPERATION erfolgreich abgeschlossen: %s', [ExtractFileName(FileName)]);
+      end;
+    end;
+
+    ShowStatus('✓ Erfolgreich gespeichert: ' + ExtractFileName(FileName));
+    jachLog.LogDebug('Status-Anzeige aktualisiert');
+
+    // UI-Feedback
     LblStatus.Caption := '✓ Datei erfolgreich gespeichert!';
     LblStatus.Font.Color := clGreen;
     LblStatus.Visible := True;
+    jachLog.LogDebug('Erfolgs-UI-Feedback aktiviert');
 
-    // Nach 2 Sekunden automatisch ausblenden
     TThread.CreateAnonymousThread(
       procedure
       begin
@@ -1474,7 +1524,8 @@ begin
             if LblStatus.Visible and (LblStatus.Font.Color = clGreen) then
             begin
               LblStatus.Visible := False;
-              LblStatus.Font.Color := clNavy; // Zurück zur Standard-Farbe
+              LblStatus.Font.Color := clNavy;
+              jachLog.LogDebug('Erfolgs-UI-Feedback automatisch deaktiviert');
             end;
           end);
       end).Start;
@@ -1482,17 +1533,21 @@ begin
   except
     on E: Exception do
     begin
-      ShowStatus('Fehler beim Speichern!');
+      ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
+      jachLog.LogError('SPEICHER-OPERATION fehlgeschlagen nach %d ms', [ElapsedMs], E);
+      jachLog.LogError('Zieldatei war: %s', [FileName]);
 
-      // Rotes Fehler-Feedback
+      ShowStatus('Fehler beim Speichern!');
+      jachLog.LogDebug('Status auf Fehler gesetzt');
+
+      // Fehler-UI-Feedback
       LblStatus.Caption := '✗ Fehler beim Speichern!';
       LblStatus.Font.Color := clRed;
       LblStatus.Visible := True;
+      jachLog.LogDebug('Fehler-UI-Feedback aktiviert');
 
-      Application.MessageBox(PChar('Fehler beim Speichern: ' + E.Message),
-        'Fehler', MB_ICONERROR);
+      Application.MessageBox(PChar('Fehler beim Speichern: ' + E.Message), 'Fehler', MB_ICONERROR);
 
-      // Fehler-Label nach 3 Sekunden ausblenden
       TThread.CreateAnonymousThread(
         procedure
         begin
@@ -1504,6 +1559,7 @@ begin
               begin
                 LblStatus.Visible := False;
                 LblStatus.Font.Color := clNavy;
+                jachLog.LogDebug('Fehler-UI-Feedback automatisch deaktiviert');
               end;
             end);
         end).Start;
@@ -1512,6 +1568,7 @@ begin
 
   Screen.Cursor := crDefault;
   BtnSaveAs.Enabled := True;
+  jachLog.LogDebug('UI aus Speicher-Zustand zurückgesetzt');
 end;
 
 procedure TFrmMain.BtnExportCsvClick(Sender: TObject);
@@ -1523,34 +1580,61 @@ var
   UnitDetails: TUnitDetails;
   Line: string;
   VeterancyText: string;
+  StartTime: TDateTime;
+  ElapsedMs: Integer;
+  LineCount: Integer;
+  ErrorCount: Integer;
 begin
+  jachLog.LogInfo('=== CSV-EXPORT gestartet ===');
+  jachLog.LogDebug('Benutzer klickte "CSV exportieren" Button');
+
   SaveDialog1.FilterIndex := 2; // CSV auswählen
   if not SaveDialog1.Execute then
+  begin
+    jachLog.LogDebug('Benutzer hat CSV-Export-Dialog abgebrochen');
     Exit;
+  end;
 
-  // ← NEU: UI während Export blockieren
+  StartTime := Now;
+  jachLog.LogInfo('CSV-Export nach: %s', [SaveDialog1.FileName]);
+
   SetUILoadingState(True);
   ShowProgress('Exportiere CSV-Datei...');
+  jachLog.LogDebug('UI in Export-Zustand versetzt');
 
   Csv := TStringList.Create;
+  LineCount := 0;
+  ErrorCount := 0;
+
   try
+    // CSV-Header
     Csv.Add('Squad;UnitId;Type;Name;Veterancy');
+    Inc(LineCount);
+    jachLog.LogDebug('CSV-Header geschrieben');
+
     FAllSquadNames := FSave.GetSquadNames;
+    jachLog.LogInfo('Exportiere %d Squads', [Length(FAllSquadNames)]);
 
     ShowProgress('Exportiere CSV-Datei...', Length(FAllSquadNames));
 
     for I := 0 to Length(FAllSquadNames) - 1 do
     begin
-      UpdateProgress(I, Format('Verarbeite Squad %d/%d...',
+      UpdateProgress(I, Format('Verarbeite Squad %d/%d für CSV-Export',
         [I + 1, Length(FAllSquadNames)]));
 
+      jachLog.LogDebug('Exportiere Squad %d: "%s"', [I+1, FAllSquadNames[I]]);
+
       Units := FSave.GetSquadMembers(I);
+      jachLog.LogDebug('Squad "%s" hat %d Units', [FAllSquadNames[I], Length(Units)]);
+
       for J := 0 to Length(Units) - 1 do
       begin
         try
           if IsEmptySlot(Units[J]) then
+          begin
             Line := Format('%s;%s;%s;%s;%s', [FAllSquadNames[I], Units[J],
-              'Empty', '[Leer]', ''])
+              'Empty', '[Leer]', '']);
+          end
           else
           begin
             Info := FSave.GetUnitInfo(Units[J]);
@@ -1564,30 +1648,73 @@ begin
                 if UnitDetails.Veterancy > 0 then
                   VeterancyText := IntToStr(UnitDetails.Veterancy);
               except
-                // Bei Fehlern leeren Veteranenstatus verwenden
+                on E: Exception do
+                begin
+                  jachLog.LogWarning('CSV-Export: Veterancy-Fehler für Unit %s: %s', [Units[J], E.Message]);
+                  Inc(ErrorCount);
+                end;
               end;
             end;
 
             Line := Format('%s;%s;%s;%s;%s', [FAllSquadNames[I], Units[J],
               Info.Kind, Info.Name, VeterancyText]);
           end;
+
         except
           on E: Exception do
+          begin
+            jachLog.LogError('CSV-Export: Unit-Fehler für %s in Squad "%s": %s',
+              [Units[J], FAllSquadNames[I], E.Message]);
             Line := Format('%s;%s;%s;%s;%s', [FAllSquadNames[I], Units[J],
-              '?', '', '']);
+              'ERROR', 'Fehler beim Laden', '']);
+            Inc(ErrorCount);
+          end;
         end;
+
         Csv.Add(Line);
+        Inc(LineCount);
       end;
     end;
 
     UpdateProgress(Length(FAllSquadNames), 'Schreibe CSV-Datei...');
+    jachLog.LogDebug('Schreibe CSV-Datei mit %d Zeilen', [LineCount]);
+
     Csv.SaveToFile(SaveDialog1.FileName, TEncoding.UTF8);
+
+    ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
+    jachLog.LogInfo('CSV-EXPORT erfolgreich abgeschlossen:');
+    jachLog.LogInfo('- Datei: %s', [ExtractFileName(SaveDialog1.FileName)]);
+    jachLog.LogInfo('- Zeilen: %d (inkl. Header)', [LineCount]);
+    jachLog.LogInfo('- Squads: %d', [Length(FAllSquadNames)]);
+    jachLog.LogInfo('- Dauer: %d ms', [ElapsedMs]);
+
+    if ErrorCount > 0 then
+      jachLog.LogWarning('CSV-Export mit %d Fehlern abgeschlossen', [ErrorCount])
+    else
+      jachLog.LogInfo('CSV-Export vollständig erfolgreich abgeschlossen');
+
     ShowStatus('CSV exportiert: ' + ExtractFileName(SaveDialog1.FileName));
-  finally
-    Csv.Free;
-    SetUILoadingState(False);
-    HideProgress;
+
+  except
+    on E: Exception do
+    begin
+      jachLog.LogError('CSV-EXPORT fehlgeschlagen', E);
+      ShowStatus('Fehler beim CSV-Export!');
+      Application.MessageBox(PChar('Fehler beim CSV-Export: ' + E.Message), 'Fehler', MB_ICONERROR);
+    end;
   end;
+
+  try
+    Csv.Free;
+    jachLog.LogDebug('CSV-StringList freigegeben');
+  except
+    on E: Exception do
+      jachLog.LogWarning('Fehler beim Freigeben der CSV-StringList: %s', [E.Message]);
+  end;
+
+  SetUILoadingState(False);
+  HideProgress;
+  jachLog.LogDebug('Export-UI-Zustand beendet');
 end;
 
 procedure TFrmMain.ShowStatus(const Msg: string);
