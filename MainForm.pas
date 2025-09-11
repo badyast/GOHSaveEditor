@@ -9,7 +9,7 @@ uses
   System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
   Vcl.ComCtrls,
-  System.Generics.Collections, System.IOUtils, ConquestSave;
+  System.Generics.Collections, System.IOUtils, System.StrUtils, ConquestSave;
 
 type
   TNodeKind = (nkSquad, nkUnit);
@@ -306,86 +306,180 @@ var
   UnitDetails: TUnitDetails;
   MaxVet: Integer;
   TotalUnits, ProcessedUnits: Integer;
+  ErrorCount, WarningCount: Integer;
+  StartTime: TDateTime;
+  ElapsedMs: Integer;
+  EmptySlotCount, EntityCount, HumanCount: Integer;
 begin
-  SquadNames := FSave.GetSquadNames;
-  SetLength(FSquads, Length(SquadNames));
+  StartTime := Now;
+  jachLog.LogInfo('=== Squad-Daten-Verarbeitung gestartet ===');
 
-  // ← NEU: Gesamtanzahl der Units für Fortschrittsanzeige berechnen
-  TotalUnits := 0;
-  for I := 0 to Length(SquadNames) - 1 do
-    TotalUnits := TotalUnits + Length(FSave.GetSquadMembers(I));
+  ErrorCount := 0;
+  WarningCount := 0;
+  EmptySlotCount := 0;
+  EntityCount := 0;
+  HumanCount := 0;
 
-  ProcessedUnits := 0;
-  ShowProgress('Lade Unit-Daten...', TotalUnits);
+  try
+    jachLog.LogDebug('Lade Squad-Namen aus Savegame');
+    SquadNames := FSave.GetSquadNames;
+    SetLength(FSquads, Length(SquadNames));
 
-  for I := 0 to Length(SquadNames) - 1 do
-  begin
-    UpdateProgress(ProcessedUnits, Format('Verarbeite Squad %d/%d: %s',
-      [I + 1, Length(SquadNames), SquadNames[I]]));
+    jachLog.LogInfo('Gefunden: %d Squads zur Verarbeitung', [Length(SquadNames)]);
 
-    FSquads[I].Name := SquadNames[I];
-    FSquads[I].UnitIds := FSave.GetSquadMembers(I);
+    // Gesamtanzahl Units berechnen
+    TotalUnits := 0;
+    for I := 0 to Length(SquadNames) - 1 do
+      TotalUnits := TotalUnits + Length(FSave.GetSquadMembers(I));
 
-    // Arrays für gecachte Daten vorbereiten
-    SetLength(FSquads[I].UnitNames, Length(FSquads[I].UnitIds));
-    SetLength(FSquads[I].UnitVeterancies, Length(FSquads[I].UnitIds));
-    SetLength(FSquads[I].UnitKinds, Length(FSquads[I].UnitIds));
+    jachLog.LogInfo('Gesamtanzahl Units in allen Squads: %d', [TotalUnits]);
 
-    MaxVet := 0;
+    ProcessedUnits := 0;
+    ShowProgress('Lade Unit-Daten...', TotalUnits);
 
-    // Alle Unit-Daten EINMAL laden und cachen
-    for J := 0 to Length(FSquads[I].UnitIds) - 1 do
+    // Squad-für-Squad-Verarbeitung
+    for I := 0 to Length(SquadNames) - 1 do
     begin
-      Inc(ProcessedUnits);
+      UpdateProgress(ProcessedUnits, Format('Verarbeite Squad %d/%d: %s',
+        [I + 1, Length(SquadNames), SquadNames[I]]));
 
-      if IsEmptySlot(FSquads[I].UnitIds[J]) then
-      begin
-        FSquads[I].UnitNames[J] := '[Leer]';
-        FSquads[I].UnitVeterancies[J] := 0;
-        FSquads[I].UnitKinds[J] := 'Empty';
-      end
-      else
-      begin
-        try
-          UnitInfo := FSave.GetUnitInfo(FSquads[I].UnitIds[J]);
-          FSquads[I].UnitNames[J] := UnitInfo.Name;
-          FSquads[I].UnitKinds[J] := UnitInfo.Kind;
+      // Progress-Logging (alle 10 Squads oder am Ende)
+      if (I mod 10 = 0) or (I = Length(SquadNames) - 1) then
+        jachLog.LogDebug('Squad-Progress: %d/%d - "%s"', [I+1, Length(SquadNames), SquadNames[I]]);
 
-          // Veterancy nur für menschliche Einheiten
-          if SameText(UnitInfo.Kind, 'Human') then
-          begin
-            try
-              UnitDetails := FSave.GetUnitDetails(FSquads[I].UnitIds[J]);
-              FSquads[I].UnitVeterancies[J] := UnitDetails.Veterancy;
-              if UnitDetails.Veterancy > MaxVet then
-                MaxVet := UnitDetails.Veterancy;
-            except
+      jachLog.LogDebug('Verarbeite Squad "%s" (Index %d)', [SquadNames[I], I]);
+
+      FSquads[I].Name := SquadNames[I];
+      FSquads[I].UnitIds := FSave.GetSquadMembers(I);
+
+      jachLog.LogDebug('Squad "%s" hat %d Units', [SquadNames[I], Length(FSquads[I].UnitIds)]);
+
+      // Arrays für gecachte Daten vorbereiten
+      SetLength(FSquads[I].UnitNames, Length(FSquads[I].UnitIds));
+      SetLength(FSquads[I].UnitVeterancies, Length(FSquads[I].UnitIds));
+      SetLength(FSquads[I].UnitKinds, Length(FSquads[I].UnitIds));
+
+      MaxVet := 0;
+
+      // Unit-für-Unit-Verarbeitung
+      for J := 0 to Length(FSquads[I].UnitIds) - 1 do
+      begin
+        Inc(ProcessedUnits);
+
+        if IsEmptySlot(FSquads[I].UnitIds[J]) then
+        begin
+          // Leere Slots
+          FSquads[I].UnitNames[J] := '[Leer]';
+          FSquads[I].UnitVeterancies[J] := 0;
+          FSquads[I].UnitKinds[J] := 'Empty';
+          Inc(EmptySlotCount);
+
+          jachLog.LogDebug('Squad "%s" Slot %d: Leer (%s)',
+            [SquadNames[I], J, FSquads[I].UnitIds[J]]);
+        end
+        else
+        begin
+          try
+            // Unit-Basis-Informationen laden
+            UnitInfo := FSave.GetUnitInfo(FSquads[I].UnitIds[J]);
+            FSquads[I].UnitNames[J] := UnitInfo.Name;
+            FSquads[I].UnitKinds[J] := UnitInfo.Kind;
+
+            jachLog.LogDebug('Squad "%s" Slot %d: %s "%s" (%s)',
+              [SquadNames[I], J, UnitInfo.Kind, UnitInfo.Name, FSquads[I].UnitIds[J]]);
+
+            // Statistik-Zählung
+            if SameText(UnitInfo.Kind, 'Human') then
+            begin
+              Inc(HumanCount);
+
+              // Veterancy nur für Menschen laden
+              try
+                UnitDetails := FSave.GetUnitDetails(FSquads[I].UnitIds[J]);
+                FSquads[I].UnitVeterancies[J] := UnitDetails.Veterancy;
+
+                if UnitDetails.Veterancy > MaxVet then
+                  MaxVet := UnitDetails.Veterancy;
+
+                if UnitDetails.Veterancy > 0 then
+                  jachLog.LogDebug('Unit %s: Veterancy %d', [FSquads[I].UnitIds[J], UnitDetails.Veterancy]);
+
+              except
+                on E: Exception do
+                begin
+                  jachLog.LogWarning('Veterancy-Fehler für Unit %s in Squad "%s": %s',
+                    [FSquads[I].UnitIds[J], SquadNames[I], E.Message]);
+                  FSquads[I].UnitVeterancies[J] := 0;
+                  Inc(WarningCount);
+                end;
+              end;
+            end
+            else
+            begin
+              Inc(EntityCount);
               FSquads[I].UnitVeterancies[J] := 0;
             end;
-          end
-          else
-            FSquads[I].UnitVeterancies[J] := 0;
 
-        except
-          FSquads[I].UnitNames[J] := '(Fehler)';
-          FSquads[I].UnitVeterancies[J] := 0;
-          FSquads[I].UnitKinds[J] := 'Unknown';
+          except
+            on E: Exception do
+            begin
+              jachLog.LogError('Schwerwiegender Unit-Fehler für %s in Squad "%s": %s',
+                [FSquads[I].UnitIds[J], SquadNames[I], E.Message]);
+              FSquads[I].UnitNames[J] := '(Fehler)';
+              FSquads[I].UnitVeterancies[J] := 0;
+              FSquads[I].UnitKinds[J] := 'Unknown';
+              Inc(ErrorCount);
+            end;
+          end;
         end;
+
+        // Progress-Update (alle 50 Units)
+        if (ProcessedUnits mod 50 = 0) or (J = Length(FSquads[I].UnitIds) - 1) then
+          UpdateProgress(ProcessedUnits);
       end;
 
-      // ← NEU: Fortschritt alle 25 Units oder am Ende jedes Squads aktualisieren
-      if (ProcessedUnits mod 25 = 0) or (J = Length(FSquads[I].UnitIds) - 1)
-      then
-        UpdateProgress(ProcessedUnits);
+      FSquads[I].MaxVeterancy := MaxVet;
+
+      if MaxVet > 0 then
+        jachLog.LogDebug('Squad "%s" maximale Veterancy: %d', [SquadNames[I], MaxVet]);
     end;
 
-    FSquads[I].MaxVeterancy := MaxVet;
+    FSquadsDirty := False;
+
+    ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
+
+    // Ausführliche Abschluss-Statistiken
+    jachLog.LogInfo('=== Squad-Verarbeitung abgeschlossen ===');
+    jachLog.LogInfo('Verarbeitungszeit: %d ms', [ElapsedMs]);
+    jachLog.LogInfo('Verarbeitete Squads: %d', [Length(SquadNames)]);
+    jachLog.LogInfo('Verarbeitete Units gesamt: %d', [ProcessedUnits]);
+    jachLog.LogInfo('- Menschen: %d', [HumanCount]);
+    jachLog.LogInfo('- Entities: %d', [EntityCount]);
+    jachLog.LogInfo('- Leere Slots: %d', [EmptySlotCount]);
+    jachLog.LogInfo('Fehler: %d', [ErrorCount]);
+    jachLog.LogInfo('Warnungen: %d', [WarningCount]);
+
+    if ElapsedMs > 5000 then
+      jachLog.LogWarning('Langsame Squad-Verarbeitung: %d ms (> 5s)', [ElapsedMs]);
+
+    if ErrorCount > 0 then
+      jachLog.LogWarning('Squad-Verarbeitung mit %d Fehlern abgeschlossen', [ErrorCount])
+    else if WarningCount > 0 then
+      jachLog.LogInfo('Squad-Verarbeitung mit %d Warnungen abgeschlossen', [WarningCount])
+    else
+      jachLog.LogInfo('Squad-Verarbeitung vollständig erfolgreich abgeschlossen');
+
+  except
+    on E: Exception do
+    begin
+      jachLog.LogCritical('KRITISCHER FEHLER in LoadSquadsFromSave', E);
+      jachLog.LogCritical('Squad-Verarbeitung abgebrochen nach %d ms', [Round((Now - StartTime) * 24 * 60 * 60 * 1000)]);
+      raise;
+    end;
   end;
 
-  FSquadsDirty := False;
-
-  // ← NEU: Fortschritt verstecken
   HideProgress;
+  jachLog.LogDebug('Squad-Verarbeitung UI-Cleanup abgeschlossen');
 end;
 
 function TFrmMain.IsEntityUnit(const UnitId: string): Boolean;
@@ -1231,53 +1325,62 @@ var
   BaseSquadIndex, TargetSquadIndex: Integer;
   UnitIndexA, UnitIndexB: Integer;
   I: Integer;
+  StartTime: TDateTime;
+  ElapsedMs: Integer;
 begin
+  StartTime := Now;
+  jachLog.LogInfo('=== SWAP-OPERATION gestartet ===');
+  jachLog.LogDebug('Benutzer klickte "Units tauschen" Button');
+
   A := SelectedUnitInfo(TreeBase);
   B := SelectedUnitInfo(TreeTarget);
+
   if (not Assigned(A)) or (not Assigned(B)) then
   begin
-    Application.MessageBox
-      ('Bitte links und rechts jeweils eine Unit auswählen.', 'Hinweis',
-      MB_ICONINFORMATION);
+    jachLog.LogInfo('Swap abgebrochen: Nicht beide Units ausgewählt');
+    jachLog.LogDebug('TreeBase selection: %s, TreeTarget selection: %s',
+      [IfThen(Assigned(A), 'vorhanden', 'null'), IfThen(Assigned(B), 'vorhanden', 'null')]);
+    Application.MessageBox('Bitte links und rechts jeweils eine Unit auswählen.', 'Hinweis', MB_ICONINFORMATION);
     Exit;
   end;
 
-  // Squad-Indizes für spätere Fokus-Wiederherstellung speichern
+  jachLog.LogInfo('SWAP-KANDIDATEN identifiziert:');
+  jachLog.LogInfo('- Quelle: Unit %s in Squad %d', [A.UnitId, A.SquadIndex]);
+  jachLog.LogInfo('- Ziel: Unit %s in Squad %d', [B.UnitId, B.SquadIndex]);
+
   BaseSquadIndex := A.SquadIndex;
   TargetSquadIndex := B.SquadIndex;
 
-  // Prüfen ob beide Units verschoben werden dürfen (nur bei aktivem Filter)
-  if ChkOnlyHumans.Checked and IsValidUnit(A.UnitId) and IsEntityUnit(A.UnitId)
-  then
+  // Validierungen mit detailliertem Logging
+  if ChkOnlyHumans.Checked and IsValidUnit(A.UnitId) and IsEntityUnit(A.UnitId) then
   begin
-    Application.MessageBox
-      ('Die linke Unit ist eine Entity und kann bei aktivem Filter nicht verschoben werden.',
-      'Hinweis', MB_ICONINFORMATION);
+    jachLog.LogInfo('Swap abgebrochen: Quelle-Unit %s ist Entity bei aktivem Human-Filter', [A.UnitId]);
+    Application.MessageBox('Die linke Unit ist eine Entity und kann bei aktivem Filter nicht verschoben werden.', 'Hinweis', MB_ICONINFORMATION);
     Exit;
   end;
 
-  if ChkOnlyHumans.Checked and IsValidUnit(B.UnitId) and IsEntityUnit(B.UnitId)
-  then
+  if ChkOnlyHumans.Checked and IsValidUnit(B.UnitId) and IsEntityUnit(B.UnitId) then
   begin
-    Application.MessageBox
-      ('Die rechte Unit ist eine Entity und kann bei aktivem Filter nicht verschoben werden.',
-      'Hinweis', MB_ICONINFORMATION);
+    jachLog.LogInfo('Swap abgebrochen: Ziel-Unit %s ist Entity bei aktivem Human-Filter', [B.UnitId]);
+    Application.MessageBox('Die rechte Unit ist eine Entity und kann bei aktivem Filter nicht verschoben werden.', 'Hinweis', MB_ICONINFORMATION);
     Exit;
   end;
 
   if (A.SquadIndex = B.SquadIndex) and (SameText(A.UnitId, B.UnitId)) then
   begin
-    Application.MessageBox
-      ('Die gleiche Unit kann nicht mit sich selbst getauscht werden.',
-      'Hinweis', MB_ICONINFORMATION);
+    jachLog.LogInfo('Swap abgebrochen: Identische Unit ausgewählt (%s)', [A.UnitId]);
+    Application.MessageBox('Die gleiche Unit kann nicht mit sich selbst getauscht werden.', 'Hinweis', MB_ICONINFORMATION);
     Exit;
   end;
 
+  jachLog.LogDebug('Validierungen erfolgreich, führe Swap durch');
+
   try
-    // Unit-Indizes in FSquads finden
+    // Unit-Indizes in Arrays finden
     UnitIndexA := -1;
     UnitIndexB := -1;
 
+    jachLog.LogDebug('Suche Index für Quelle-Unit %s in Squad %d', [A.UnitId, A.SquadIndex]);
     for I := 0 to Length(FSquads[A.SquadIndex].UnitIds) - 1 do
       if SameText(FSquads[A.SquadIndex].UnitIds[I], A.UnitId) then
       begin
@@ -1285,6 +1388,7 @@ begin
         Break;
       end;
 
+    jachLog.LogDebug('Suche Index für Ziel-Unit %s in Squad %d', [B.UnitId, B.SquadIndex]);
     for I := 0 to Length(FSquads[B.SquadIndex].UnitIds) - 1 do
       if SameText(FSquads[B.SquadIndex].UnitIds[I], B.UnitId) then
       begin
@@ -1293,21 +1397,24 @@ begin
       end;
 
     if (UnitIndexA = -1) or (UnitIndexB = -1) then
+    begin
+      jachLog.LogError('Unit-Indizes nicht gefunden: UnitA-Index=%d, UnitB-Index=%d', [UnitIndexA, UnitIndexB]);
       raise Exception.Create('Unit-Indizes nicht gefunden');
+    end;
 
-    // SCHNELLER SWAP: Nur FSquads ändern (kein FCampaign-Parsing!)
-    SwapUnitsInSquads(A.SquadIndex, UnitIndexA, B.SquadIndex, UnitIndexB,
-      A.UnitId, B.UnitId);
+    jachLog.LogDebug('Unit-Indizes gefunden: UnitA-Index=%d, UnitB-Index=%d', [UnitIndexA, UnitIndexB]);
+    jachLog.LogInfo('Führe Swap durch: %s (Squad %d[%d]) <-> %s (Squad %d[%d])',
+      [A.UnitId, A.SquadIndex, UnitIndexA, B.UnitId, B.SquadIndex, UnitIndexB]);
 
-    // TreeViews schnell neu aufbauen (aus FSquads, nicht aus FCampaign!)
+    SwapUnitsInSquads(A.SquadIndex, UnitIndexA, B.SquadIndex, UnitIndexB, A.UnitId, B.UnitId);
+    jachLog.LogDebug('SwapUnitsInSquads erfolgreich ausgeführt');
+
+    jachLog.LogDebug('Aktualisiere TreeView-Anzeige');
     UpdateTreeViewsFromSquads;
 
-    // Fokus auf die getauschten Units wiederherstellen
-    // Nach dem Swap: A.UnitId ist jetzt in TargetSquad, B.UnitId ist jetzt in BaseSquad
+    jachLog.LogDebug('Stelle UI-Fokus wieder her');
     RestoreFocusToUnit(TreeBase, BaseSquadIndex, A.UnitId);
-    // A ist jetzt in TreeBase
     RestoreFocusToUnit(TreeTarget, TargetSquadIndex, B.UnitId);
-    // B ist jetzt in TreeTarget
 
     // Info-Panel aktualisieren
     if Assigned(SelectedUnitInfo(TreeBase)) then
@@ -1317,11 +1424,17 @@ begin
     else
       ClearInfoPanel;
 
+    ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
+    jachLog.LogInfo('SWAP-OPERATION erfolgreich abgeschlossen in %d ms', [ElapsedMs]);
     ShowStatus('Units getauscht.');
+
   except
     on E: Exception do
-      Application.MessageBox(PChar('Fehler beim Tauschen: ' + E.Message),
-        'Fehler', MB_ICONERROR);
+    begin
+      ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
+      jachLog.LogError('SWAP-OPERATION fehlgeschlagen nach %d ms', [ElapsedMs], E);
+      Application.MessageBox(PChar('Fehler beim Tauschen: ' + E.Message), 'Fehler', MB_ICONERROR);
+    end;
   end;
 end;
 
