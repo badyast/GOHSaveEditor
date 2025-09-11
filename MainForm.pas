@@ -9,7 +9,7 @@ uses
   System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
   Vcl.ComCtrls,
-  System.Generics.Collections, ConquestSave;
+  System.Generics.Collections, System.IOUtils, ConquestSave;
 
 type
   TNodeKind = (nkSquad, nkUnit);
@@ -117,29 +117,51 @@ implementation
 
 procedure TFrmMain.FormCreate(Sender: TObject);
 begin
-  jachLog.LogInfo('=== GOH Save Editor gestartet ===');
-  FSave := TConquestSave.Create;
-  SetControlsEnabled(False);
+  jachLog.LogInfo('=== MainForm-Initialisierung gestartet ===');
+  jachLog.LogDebug('FormCreate: Beginne UI-Setup');
 
-  OpenDialog1.Filter := 'Gates of Hell Save (*.sav)|*.sav';
-  SaveDialog1.Filter :=
-    'Gates of Hell Save (*.sav)|*.sav|CSV-Datei (*.csv)|*.csv';
+  try
+    // ConquestSave-Objekt erstellen
+    jachLog.LogDebug('Erstelle ConquestSave-Instanz');
+    FSave := TConquestSave.Create;
+    jachLog.LogDebug('ConquestSave-Objekt erfolgreich erstellt');
 
-  LblBaseInfo.Caption := 'Quelle: (keine Auswahl)';
-  LblTargetInfo.Caption := 'Ziel: (keine Auswahl)';
+    // UI-Initialisierung
+    jachLog.LogDebug('Konfiguriere UI-Komponenten');
+    SetControlsEnabled(False);
+    jachLog.LogDebug('Controls initial deaktiviert');
 
-  // CustomDraw Event Handler zuweisen
-  TreeBase.OnCustomDrawItem := TreeCustomDrawItem;
-  TreeTarget.OnCustomDrawItem := TreeCustomDrawItem;
+    // Dialog-Filter setzen
+    OpenDialog1.Filter := 'Gates of Hell Save (*.sav)|*.sav';
+    SaveDialog1.Filter := 'Gates of Hell Save (*.sav)|*.sav|CSV-Datei (*.csv)|*.csv';
+    jachLog.LogDebug('Dialog-Filter konfiguriert');
 
-  // Info-Panel initial leeren
-  ClearInfoPanel;
+    // Labels initialisieren
+    LblBaseInfo.Caption := 'Quelle: (keine Auswahl)';
+    LblTargetInfo.Caption := 'Ziel: (keine Auswahl)';
+    jachLog.LogDebug('Info-Labels initialisiert');
 
-  // Ersten Tab aktivieren
-  PageControl1.ActivePageIndex := 0;
+    // TreeView Event-Handler
+    TreeBase.OnCustomDrawItem := TreeCustomDrawItem;
+    TreeTarget.OnCustomDrawItem := TreeCustomDrawItem;
+    jachLog.LogDebug('TreeView Event-Handler konfiguriert');
 
-  // ← NEU: Fortschrittsanzeige initial verstecken
-  HideProgress;
+    // UI-Komponenten finalisieren
+    ClearInfoPanel;
+    PageControl1.ActivePageIndex := 0;
+    HideProgress;
+    jachLog.LogDebug('UI-Komponenten finalisiert');
+
+    jachLog.LogInfo('MainForm-Initialisierung erfolgreich abgeschlossen');
+
+  except
+    on E: Exception do
+    begin
+      jachLog.LogError('FEHLER in FormCreate', E);
+      jachLog.LogCritical('MainForm-Initialisierung fehlgeschlagen - Anwendung instabil');
+      raise;
+    end;
+  end;
 end;
 
 // ← NEU: Fortschritts-Methoden
@@ -646,42 +668,86 @@ begin
 end;
 
 procedure TFrmMain.BtnOpenClick(Sender: TObject);
+var
+  StartTime: TDateTime;
+  FileSize: Int64;
+  ElapsedMs: Integer;
+  FileName: string;
 begin
-  if not OpenDialog1.Execute then
-    Exit;
+  jachLog.LogDebug('Benutzer klickte "Save laden" Button');
 
-  // ← NEU: UI in Ladezustand versetzen
+  if not OpenDialog1.Execute then
+  begin
+    jachLog.LogDebug('Benutzer hat Dateiauswahl-Dialog abgebrochen');
+    Exit;
+  end;
+
+  FileName := OpenDialog1.FileName;
+  StartTime := Now;
+
+  jachLog.LogInfo('LADE-OPERATION gestartet für: %s', [ExtractFileName(FileName)]);
+
+  // Datei-Vorab-Informationen loggen
+  try
+    FileSize := TFile.GetSize(FileName);
+    jachLog.LogInfo('Dateigröße: %.2f MB (%d Bytes)', [FileSize / (1024*1024), FileSize]);
+
+    if FileSize > 100 * 1024 * 1024 then // > 100MB
+      jachLog.LogWarning('Große Savegame-Datei (%.2f MB) - Laden könnte länger dauern', [FileSize / (1024*1024)]);
+
+  except
+    on E: Exception do
+      jachLog.LogWarning('Konnte Dateigröße nicht ermitteln: %s', [E.Message]);
+  end;
+
+  jachLog.LogDebug('Setze UI in Lade-Zustand');
   SetUILoadingState(True);
 
   try
     ShowProgress('Lade Savegame...');
+    jachLog.LogDebug('Fortschrittsanzeige aktiviert');
 
-    FSave.LoadFromSave(OpenDialog1.FileName);
-    LblSave.Caption := ExtractFileName(OpenDialog1.FileName);
+    jachLog.LogDebug('Rufe FSave.LoadFromSave auf');
+    FSave.LoadFromSave(FileName);
+    LblSave.Caption := ExtractFileName(FileName);
+    jachLog.LogInfo('ZIP-Datei erfolgreich geladen und extrahiert');
 
-    // LoadSquadsFromSave zeigt seinen eigenen Fortschritt an
+    jachLog.LogDebug('Beginne Squad-Daten-Verarbeitung');
     LoadSquadsFromSave;
+    jachLog.LogInfo('Squad-Daten erfolgreich verarbeitet');
 
-    ShowProgress('Erstelle Baumansicht...');
+    jachLog.LogDebug('Aktualisiere TreeView-Anzeige');
     UpdateTreeViewsFromSquads;
+    jachLog.LogInfo('TreeView-Anzeige aktualisiert');
 
     SetControlsEnabled(True);
-    ShowStatus('Save geladen: ' + ExtractFileName(OpenDialog1.FileName));
+    ShowStatus('Save geladen: ' + ExtractFileName(FileName));
     ClearInfoPanel;
+    jachLog.LogDebug('UI in Normal-Zustand zurückgesetzt');
+
+    ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
+    jachLog.LogInfo('LADE-OPERATION erfolgreich abgeschlossen in %d ms', [ElapsedMs]);
+
+    if ElapsedMs > 10000 then // > 10 Sekunden
+      jachLog.LogWarning('Langsame Lade-Performance: %d ms (> 10s)', [ElapsedMs]);
 
   except
     on E: Exception do
     begin
+      jachLog.LogError('LADE-OPERATION fehlgeschlagen für: %s', [FileName], E);
+      jachLog.LogError('Exception-Details: %s: %s', [E.ClassName, E.Message]);
+
       SetControlsEnabled(False);
       ShowStatus('Fehler beim Laden!');
-      Application.MessageBox(PChar('Fehler beim Laden: ' + E.Message), 'Fehler',
-        MB_ICONERROR);
+      jachLog.LogDebug('UI auf Fehler-Zustand gesetzt');
+
+      Application.MessageBox(PChar('Fehler beim Laden: ' + E.Message), 'Fehler', MB_ICONERROR);
     end;
   end;
 
-  // ← NEU: UI wieder in normalen Zustand versetzen
   SetUILoadingState(False);
   HideProgress;
+  jachLog.LogDebug('Lade-UI-Zustand beendet');
 end;
 
 procedure TFrmMain.UpdateInfoLabels;

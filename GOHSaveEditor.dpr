@@ -10,6 +10,7 @@ uses
 
 begin
   // Startup-Logging
+  jachLog.LogLevel[jachLog.DefaultTopic] := TLogLevel.llDebug;
   jachLog.LogInfo('=== GOH Save Editor gestartet ===');
   jachLog.LogInfo('Version: 1.0.0');
   //jachLog.LogInfo('Build-Datum: %s', [{$I %DATE%}]);
