@@ -213,10 +213,28 @@ end;
 
 procedure TFrmMain.FormDestroy(Sender: TObject);
 begin
-  ClearTreeData(TreeBase);
-  ClearTreeData(TreeTarget);
-  FSave.Free;
-  jachLog.LogInfo('=== GOH Save Editor beendet ===');
+  jachLog.LogInfo('=== MainForm wird beendet ===');
+  jachLog.LogDebug('FormDestroy: Beginne Cleanup');
+
+  try
+    jachLog.LogDebug('Bereinige TreeView-Daten');
+    ClearTreeData(TreeBase);
+    ClearTreeData(TreeTarget);
+    jachLog.LogDebug('TreeView-Daten bereinigt');
+
+    jachLog.LogDebug('Gebe ConquestSave-Objekt frei');
+    FSave.Free;
+    jachLog.LogDebug('ConquestSave-Objekt freigegeben');
+
+    jachLog.LogInfo('MainForm-Cleanup erfolgreich abgeschlossen');
+
+  except
+    on E: Exception do
+    begin
+      jachLog.LogWarning('Fehler beim MainForm-Cleanup (nicht kritisch): %s', [E.Message]);
+      // Nicht re-raisen, da wir beim Beenden sind
+    end;
+  end;
 end;
 
 procedure TFrmMain.SetControlsEnabled(AEnabled: Boolean);
