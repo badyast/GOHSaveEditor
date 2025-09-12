@@ -175,21 +175,19 @@ begin
     ProgressBar1.Max := AMaxValue;
     ProgressBar1.Position := 0;
     ProgressBar1.Style := pbstNormal;
+    jachLog.LogDebug('Fortschrittsanzeige gestartet: "%s" (Max: %d)', [AMessage, AMaxValue]);
   end
   else
   begin
-    // Unbestimmter Fortschritt (Marquee-Style)
     ProgressBar1.Style := pbstMarquee;
+    jachLog.LogDebug('Fortschrittsanzeige gestartet (unbestimmt): "%s"', [AMessage]);
   end;
 
   ProgressBar1.Visible := True;
-
-  // UI aktualisieren damit die Änderungen sofort sichtbar sind
   Application.ProcessMessages;
 end;
 
-procedure TFrmMain.UpdateProgress(ACurrentValue: Integer;
-  const AMessage: string = '');
+procedure TFrmMain.UpdateProgress(ACurrentValue: Integer; const AMessage: string = '');
 begin
   if AMessage <> '' then
     LblStatus.Caption := AMessage;
@@ -207,11 +205,11 @@ begin
   ProgressBar1.Visible := False;
   LblStatus.Visible := False;
   LblStatus.Caption := '';
+  jachLog.LogDebug('Fortschrittsanzeige beendet');
 end;
 
 procedure TFrmMain.SetUILoadingState(ALoading: Boolean);
 begin
-  // Alle Hauptcontrols während des Ladens deaktivieren
   BtnOpen.Enabled := not ALoading;
   TreeBase.Enabled := not ALoading;
   TreeTarget.Enabled := not ALoading;
@@ -224,12 +222,14 @@ begin
   if ALoading then
   begin
     Screen.Cursor := crHourGlass;
-    Caption := 'GOH Savegame Editor - Lade...';
+    Caption := 'GOH Savegame Editor - Verarbeitung läuft...';
+    jachLog.LogDebug('UI in Lade-Zustand versetzt');
   end
   else
   begin
     Screen.Cursor := crDefault;
     Caption := 'GOH Savegame Editor';
+    jachLog.LogDebug('UI in Normal-Zustand zurückgesetzt');
   end;
 end;
 
@@ -1005,6 +1005,7 @@ end;
 
 procedure TFrmMain.ClearInfoPanel;
 begin
+  jachLog.LogDebug('Info-Panel geleert');
   MemoInfo.Clear;
   MemoInfo.Lines.Add('Keine Unit ausgewählt');
   ListViewInventory.Items.Clear;
@@ -1015,18 +1016,24 @@ var
   Details: TUnitDetails;
   Item: TListItem;
   I: Integer;
-  S: string;
+  StartTime: TDateTime;
+  ElapsedMs: Integer;
 begin
+  StartTime := Now;
+  jachLog.LogDebug('Aktualisiere Unit-Info-Panel für: %s', [UnitId]);
+
   if IsEmptySlot(UnitId) then
   begin
     MemoInfo.Clear;
     MemoInfo.Lines.Add('Leerer Slot');
     ListViewInventory.Items.Clear;
+    jachLog.LogDebug('Unit-Info-Panel: Leerer Slot angezeigt');
     Exit;
   end;
 
   try
     Details := FSave.GetUnitDetails(UnitId);
+    jachLog.LogDebug('Unit-Details geladen für %s: %s "%s"', [UnitId, Details.Kind, Details.Name]);
 
     // Allgemeine Informationen
     MemoInfo.Clear;
@@ -1068,27 +1075,25 @@ begin
 
     // Inventar
     ListViewInventory.Items.Clear;
+    jachLog.LogDebug('Lade Inventar für Unit %s: %d Items', [UnitId, Length(Details.Inventory)]);
+
     for I := 0 to High(Details.Inventory) do
     begin
       Item := ListViewInventory.Items.Add;
       Item.Caption := Details.Inventory[I].ItemName;
 
-      // Typ
       if Details.Inventory[I].ItemType <> '' then
         Item.SubItems.Add(Details.Inventory[I].ItemType)
       else
         Item.SubItems.Add('-');
 
-      // Anzahl
       if Details.Inventory[I].Quantity > 1 then
         Item.SubItems.Add(IntToStr(Details.Inventory[I].Quantity))
       else
         Item.SubItems.Add('1');
 
-      // Position
       Item.SubItems.Add('Cell ' + Details.Inventory[I].Cell);
 
-      // Anmerkung
       if Details.Inventory[I].IsUserItem then
         Item.SubItems.Add('Ausgerüstet')
       else
@@ -1100,11 +1105,16 @@ begin
     begin
       Item := ListViewInventory.Items.Add;
       Item.Caption := '(Kein Inventar gefunden)';
+      jachLog.LogDebug('Unit %s: Kein Inventar vorhanden', [UnitId]);
     end;
+
+    ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
+    jachLog.LogDebug('Unit-Info-Panel aktualisiert in %d ms', [ElapsedMs]);
 
   except
     on E: Exception do
     begin
+      jachLog.LogError('Fehler beim Laden der Unit-Details für %s', [UnitId], E);
       MemoInfo.Clear;
       MemoInfo.Lines.Add('Fehler beim Laden der Unit-Details:');
       MemoInfo.Lines.Add(E.Message);
@@ -1117,35 +1127,52 @@ procedure TFrmMain.TreeBaseChange(Sender: TObject; Node: TTreeNode);
 var
   U: TNodeInfo;
 begin
+  jachLog.LogDebug('TreeBase Selektion geändert');
+
   UpdateInfoLabels;
 
   // Update Info-Panel wenn eine Unit ausgewählt ist
   U := SelectedUnitInfo(TreeBase);
   if Assigned(U) then
-    UpdateUnitInfoPanel(U.UnitId)
+  begin
+    jachLog.LogDebug('TreeBase: Unit %s ausgewählt', [U.UnitId]);
+    UpdateUnitInfoPanel(U.UnitId);
+  end
   else
+  begin
+    jachLog.LogDebug('TreeBase: Keine Unit ausgewählt');
     ClearInfoPanel;
+  end;
 end;
 
 procedure TFrmMain.TreeTargetChange(Sender: TObject; Node: TTreeNode);
 var
   U: TNodeInfo;
 begin
+  jachLog.LogDebug('TreeTarget Selektion geändert');
+
   UpdateInfoLabels;
 
   // Update Info-Panel wenn eine Unit ausgewählt ist (Target hat Priorität)
   U := SelectedUnitInfo(TreeTarget);
   if Assigned(U) then
+  begin
+    jachLog.LogDebug('TreeTarget: Unit %s ausgewählt', [U.UnitId]);
     UpdateUnitInfoPanel(U.UnitId);
+  end;
 end;
 
 procedure TFrmMain.ChkOnlyHumansClick(Sender: TObject);
 begin
+  jachLog.LogInfo('Human-Filter geändert auf: %s', [IfThen(ChkOnlyHumans.Checked, 'Nur Menschen', 'Alle Units')]);
+
   // Bei Änderung der Checkbox die TreeViews neu laden
   if Assigned(FSave) then
   begin
+    jachLog.LogDebug('Lade TreeViews nach Filter-Änderung neu');
     PopulateTrees;
     ClearInfoPanel;
+    jachLog.LogDebug('TreeViews nach Filter-Änderung aktualisiert');
   end;
 end;
 
@@ -1720,6 +1747,7 @@ end;
 procedure TFrmMain.ShowStatus(const Msg: string);
 begin
   Caption := 'GOH Savegame Editor – ' + Msg;
+  jachLog.LogDebug('Status-Caption gesetzt: "%s"', [Msg]);
 end;
 
 procedure TFrmMain.SwapUnitsInSquads(ASquadA, AUnitA: Integer;

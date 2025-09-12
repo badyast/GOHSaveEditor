@@ -20,6 +20,7 @@
 interface
 
 uses
+  ujachLogAuto, ujachLogMgr,
   System.StrUtils,
   System.Classes,
   System.SysUtils,
@@ -147,27 +148,107 @@ var
   Zip: TZipFile;
   ExtractDir: string;
   G: TGUID;
+  FileSize: Int64;
+  StartTime: TDateTime;
+  ElapsedMs: Integer;
 begin
+  StartTime := Now;
+  jachLog.LogInfo('ConquestSave.LoadFromSave gestartet für: %s', [ASaveFile]);
+
   if not TFile.Exists(ASaveFile) then
+  begin
+    jachLog.LogError('Savegame-Datei nicht gefunden: %s', [ASaveFile]);
     raise EConquestSave.Create('Save file not found: ' + ASaveFile);
+  end;
+
+  try
+    FileSize := TFile.GetSize(ASaveFile);
+    jachLog.LogInfo('Savegame-Dateigröße: %.2f MB (%d Bytes)',
+      [FileSize / (1024 * 1024), FileSize]);
+  except
+    on E: Exception do
+      jachLog.LogWarning('Konnte Savegame-Dateigröße nicht ermitteln: %s',
+        [E.Message]);
+  end;
 
   FSaveFile := ASaveFile;
 
-  // Create temp working directory
   CreateGUID(G);
   ExtractDir := TPath.Combine(TPath.GetTempPath,
     'ConquestSave_' + GUIDToString(G));
-  TDirectory.CreateDirectory(ExtractDir);
+
+  try
+    TDirectory.CreateDirectory(ExtractDir);
+    jachLog.LogDebug('Temporäres Verzeichnis erstellt: %s', [ExtractDir]);
+  except
+    on E: Exception do
+    begin
+      jachLog.LogError
+        ('Fehler beim Erstellen des temporären Verzeichnisses', E);
+      raise EConquestSave.Create('Could not create temp directory: ' +
+        E.Message);
+    end;
+  end;
 
   Zip := TZipFile.Create;
   try
-    Zip.Open(FSaveFile, zmRead);
-    Zip.ExtractAll(ExtractDir);
+    try
+      jachLog.LogDebug('Öffne ZIP-Datei zum Lesen');
+      Zip.Open(FSaveFile, zmRead);
+      jachLog.LogInfo('ZIP-Datei geöffnet, %d Einträge gefunden',
+        [Zip.FileCount]);
+
+      jachLog.LogDebug('Extrahiere alle Dateien');
+      Zip.ExtractAll(ExtractDir);
+      jachLog.LogInfo('Alle ZIP-Inhalte extrahiert nach: %s', [ExtractDir]);
+
+    except
+      on E: Exception do
+      begin
+        jachLog.LogError('Fehler beim Öffnen/Extrahieren der ZIP-Datei', E);
+        raise EConquestSave.Create('Could not open/extract save file: ' +
+          E.Message);
+      end;
+    end;
   finally
-    Zip.Free;
+    try
+      Zip.Free;
+      jachLog.LogDebug('ZIP-Objekt freigegeben');
+    except
+      on E: Exception do
+        jachLog.LogWarning('Fehler beim Schließen der ZIP-Datei: %s',
+          [E.Message]);
+    end;
   end;
 
-  LoadFromFolder(ExtractDir);
+  try
+    LoadFromFolder(ExtractDir);
+    ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
+    jachLog.LogInfo
+      ('ConquestSave.LoadFromSave erfolgreich abgeschlossen in %d ms',
+      [ElapsedMs]);
+  except
+    on E: Exception do
+    begin
+      jachLog.LogError('Fehler beim Laden aus extrahiertem Ordner', E);
+
+      // Cleanup bei Fehler
+      try
+        if TDirectory.Exists(ExtractDir) then
+        begin
+          TDirectory.Delete(ExtractDir, True);
+          jachLog.LogDebug('Temporäres Verzeichnis nach Fehler bereinigt');
+        end;
+      except
+        on CleanupE: Exception do
+          jachLog.LogWarning
+            ('Konnte temporäres Verzeichnis nicht löschen: %s - %s',
+            [ExtractDir, CleanupE.Message]);
+      end;
+
+      raise;
+    end;
+  end;
 end;
 
 procedure TConquestSave.SaveToSave;
@@ -183,49 +264,81 @@ var
   Files: TArray<string>;
   FileName, RelPath, Base: string;
   Enc: TEncoding;
-
+  StartTime: TDateTime;
+  ElapsedMs: Integer;
+  FileCount: Integer;
 begin
-  // Persist current campaign text (if we have it loaded)
+  StartTime := Now;
+  jachLog.LogInfo('ConquestSave.SaveToSaveAs gestartet für: %s', [DestFile]);
+
+  // Campaign-Datei persistent speichern
   if (FCampaignPath <> '') and (FCampaign <> nil) then
   begin
-    Enc := TUTF8Encoding.Create(False); // UTF-8 ohne BOM
-    FCampaign.SaveToFile(FCampaignPath, Enc);
+    jachLog.LogDebug('Speichere Campaign-Daten nach: %s', [FCampaignPath]);
+    Enc := TUTF8Encoding.Create(False);
+    try
+      FCampaign.SaveToFile(FCampaignPath, Enc);
+      jachLog.LogDebug('Campaign-Datei erfolgreich gespeichert');
+    finally
+      Enc.Free;
+    end;
   end;
 
   if TFile.Exists(DestFile) then
+  begin
+    jachLog.LogInfo('Überschreibe existierende Zieldatei: %s', [DestFile]);
     TFile.Delete(DestFile);
+  end;
 
-  // Collect ALL files under the working directory so we preserve any
-  // new/unknown files the game added after recent patches.
   if (FWorkDir = '') or (not TDirectory.Exists(FWorkDir)) then
-    raise EConquestSave.Create
-      ('Working folder is invalid or not set. Load a save first.');
+  begin
+    jachLog.LogError('Arbeitsverzeichnis ungültig oder nicht gesetzt: %s', [FWorkDir]);
+    raise EConquestSave.Create('Working folder is invalid or not set. Load a save first.');
+  end;
 
+  jachLog.LogDebug('Sammle alle Dateien aus Arbeitsverzeichnis: %s', [FWorkDir]);
   Files := TDirectory.GetFiles(FWorkDir, '*', TSearchOption.soAllDirectories);
+  FileCount := Length(Files);
+  jachLog.LogInfo('Gefunden: %d Dateien zum Packen', [FileCount]);
 
   Zip := TZipFile.Create;
   try
     Zip.Open(DestFile, zmWrite);
+    jachLog.LogDebug('ZIP-Datei zum Schreiben geöffnet');
 
     Base := IncludeTrailingPathDelimiter(FWorkDir);
 
     for FileName in Files do
     begin
-      // Compute archive-relative path and normalize to forward slashes
       RelPath := FileName;
       if RelPath.StartsWith(Base, True) then
         RelPath := RelPath.Substring(Base.Length)
       else
-        RelPath := TPath.GetFileName(FileName); // fallback, should not happen
+        RelPath := TPath.GetFileName(FileName);
 
       RelPath := StringReplace(RelPath, '\', '/', [rfReplaceAll]);
-
-      // Always use Deflate to avoid uncompressed .sav (observed bug elsewhere)
       Zip.Add(FileName, RelPath, zcDeflate);
     end;
+
+    jachLog.LogDebug('Alle %d Dateien zu ZIP hinzugefügt', [FileCount]);
+
   finally
     Zip.Close;
     Zip.Free;
+    jachLog.LogDebug('ZIP-Datei geschlossen und freigegeben');
+  end;
+
+  ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
+
+  try
+    var FinalSize := TFile.GetSize(DestFile);
+    jachLog.LogInfo('ConquestSave.SaveToSaveAs erfolgreich abgeschlossen:');
+    jachLog.LogInfo('- Zieldatei: %s', [DestFile]);
+    jachLog.LogInfo('- Größe: %.2f MB (%d Bytes)', [FinalSize / (1024*1024), FinalSize]);
+    jachLog.LogInfo('- Gepackte Dateien: %d', [FileCount]);
+    jachLog.LogInfo('- Dauer: %d ms', [ElapsedMs]);
+  except
+    jachLog.LogInfo('ConquestSave.SaveToSaveAs erfolgreich abgeschlossen in %d ms', [ElapsedMs]);
   end;
 end;
 
