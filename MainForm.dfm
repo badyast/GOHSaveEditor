@@ -10,6 +10,7 @@ object FrmMain: TFrmMain
   Font.Height = -12
   Font.Name = 'Segoe UI'
   Font.Style = []
+  Menu = MainMenu1
   Position = poScreenCenter
   OnCreate = FormCreate
   OnDestroy = FormDestroy
@@ -230,5 +231,59 @@ object FrmMain: TFrmMain
   end
   object SaveDialog1: TSaveDialog
     Options = [ofOverwritePrompt, ofEnableSizing]
+  end
+  object MainMenu1: TMainMenu
+    Left = 816
+    Top = 65520
+    object Optionen1: TMenuItem
+      Caption = 'Optionen'
+      object Debuglevel: TMenuItem
+        Caption = 'Debuglevel'
+        object Off1: TMenuItem
+          Caption = 'Off'
+          OnClick = DebugLevelClick
+        end
+        object Emergency1: TMenuItem
+          Tag = 1
+          Caption = 'Emergency'
+          OnClick = DebugLevelClick
+        end
+        object Alert1: TMenuItem
+          Tag = 2
+          Caption = 'Alert'
+        end
+        object Critical1: TMenuItem
+          Tag = 3
+          Caption = 'Critical'
+          OnClick = DebugLevelClick
+        end
+        object Error1: TMenuItem
+          Tag = 4
+          Caption = 'Error'
+          OnClick = DebugLevelClick
+        end
+        object Warning1: TMenuItem
+          Tag = 5
+          Caption = 'Warning'
+          OnClick = DebugLevelClick
+        end
+        object Notice1: TMenuItem
+          Tag = 6
+          Caption = 'Notice'
+          OnClick = DebugLevelClick
+        end
+        object Info1: TMenuItem
+          Tag = 7
+          Caption = 'Info'
+          OnClick = DebugLevelClick
+        end
+        object Debug1: TMenuItem
+          Tag = 8
+          Caption = 'Debug'
+          Checked = True
+          OnClick = DebugLevelClick
+        end
+      end
+    end
   end
 end

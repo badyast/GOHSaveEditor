@@ -9,7 +9,8 @@ uses
   System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
   Vcl.ComCtrls,
-  System.Generics.Collections, System.IOUtils, System.StrUtils, ConquestSave;
+  System.Generics.Collections, System.IOUtils, System.StrUtils, ConquestSave,
+  Vcl.Menus;
 
 type
   TNodeKind = (nkSquad, nkUnit);
@@ -51,9 +52,20 @@ type
     ListViewInventory: TListView;
     TabDebug: TTabSheet;
     MemoDebug: TMemo;
-    // ← NEU: Komponenten für Ladefortschritt
     ProgressBar1: TProgressBar;
     LblStatus: TLabel;
+    MainMenu1: TMainMenu;
+    Optionen1: TMenuItem;
+    Debuglevel: TMenuItem;
+    Off1: TMenuItem;
+    Emergency1: TMenuItem;
+    Critical1: TMenuItem;
+    Error1: TMenuItem;
+    Warning1: TMenuItem;
+    Notice1: TMenuItem;
+    Info1: TMenuItem;
+    Debug1: TMenuItem;
+    Alert1: TMenuItem;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
@@ -66,6 +78,8 @@ type
     procedure ChkOnlyHumansClick(Sender: TObject);
     procedure TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
       State: TCustomDrawState; var DefaultDraw: Boolean);
+      procedure DebugLevelClick(Sender: TObject);
+
   private
     FSquads: TArray<TSquadData>; // Live-Datenstruktur
     FSquadsDirty: Boolean; // Änderungen pending?
@@ -105,7 +119,8 @@ type
       const AMessage: string = '');
     procedure HideProgress;
     procedure SetUILoadingState(ALoading: Boolean);
-  public
+    procedure UncheckMenu(AMenuItem: TMenuItem);
+      public
   end;
 
 var
@@ -133,7 +148,8 @@ begin
 
     // Dialog-Filter setzen
     OpenDialog1.Filter := 'Gates of Hell Save (*.sav)|*.sav';
-    SaveDialog1.Filter := 'Gates of Hell Save (*.sav)|*.sav|CSV-Datei (*.csv)|*.csv';
+    SaveDialog1.Filter :=
+      'Gates of Hell Save (*.sav)|*.sav|CSV-Datei (*.csv)|*.csv';
     jachLog.LogDebug('Dialog-Filter konfiguriert');
 
     // Labels initialisieren
@@ -158,7 +174,8 @@ begin
     on E: Exception do
     begin
       jachLog.LogError('FEHLER in FormCreate', E);
-      jachLog.LogCritical('MainForm-Initialisierung fehlgeschlagen - Anwendung instabil');
+      jachLog.LogCritical
+        ('MainForm-Initialisierung fehlgeschlagen - Anwendung instabil');
       raise;
     end;
   end;
@@ -175,19 +192,22 @@ begin
     ProgressBar1.Max := AMaxValue;
     ProgressBar1.Position := 0;
     ProgressBar1.Style := pbstNormal;
-    jachLog.LogDebug('Fortschrittsanzeige gestartet: "%s" (Max: %d)', [AMessage, AMaxValue]);
+    jachLog.LogDebug('Fortschrittsanzeige gestartet: "%s" (Max: %d)',
+      [AMessage, AMaxValue]);
   end
   else
   begin
     ProgressBar1.Style := pbstMarquee;
-    jachLog.LogDebug('Fortschrittsanzeige gestartet (unbestimmt): "%s"', [AMessage]);
+    jachLog.LogDebug('Fortschrittsanzeige gestartet (unbestimmt): "%s"',
+      [AMessage]);
   end;
 
   ProgressBar1.Visible := True;
   Application.ProcessMessages;
 end;
 
-procedure TFrmMain.UpdateProgress(ACurrentValue: Integer; const AMessage: string = '');
+procedure TFrmMain.UpdateProgress(ACurrentValue: Integer;
+  const AMessage: string = '');
 begin
   if AMessage <> '' then
     LblStatus.Caption := AMessage;
@@ -253,7 +273,8 @@ begin
   except
     on E: Exception do
     begin
-      jachLog.LogWarning('Fehler beim MainForm-Cleanup (nicht kritisch): %s', [E.Message]);
+      jachLog.LogWarning('Fehler beim MainForm-Cleanup (nicht kritisch): %s',
+        [E.Message]);
       // Nicht re-raisen, da wir beim Beenden sind
     end;
   end;
@@ -325,7 +346,8 @@ begin
     SquadNames := FSave.GetSquadNames;
     SetLength(FSquads, Length(SquadNames));
 
-    jachLog.LogInfo('Gefunden: %d Squads zur Verarbeitung', [Length(SquadNames)]);
+    jachLog.LogInfo('Gefunden: %d Squads zur Verarbeitung',
+      [Length(SquadNames)]);
 
     // Gesamtanzahl Units berechnen
     TotalUnits := 0;
@@ -345,14 +367,16 @@ begin
 
       // Progress-Logging (alle 10 Squads oder am Ende)
       if (I mod 10 = 0) or (I = Length(SquadNames) - 1) then
-        jachLog.LogDebug('Squad-Progress: %d/%d - "%s"', [I+1, Length(SquadNames), SquadNames[I]]);
+        jachLog.LogDebug('Squad-Progress: %d/%d - "%s"',
+          [I + 1, Length(SquadNames), SquadNames[I]]);
 
       jachLog.LogDebug('Verarbeite Squad "%s" (Index %d)', [SquadNames[I], I]);
 
       FSquads[I].Name := SquadNames[I];
       FSquads[I].UnitIds := FSave.GetSquadMembers(I);
 
-      jachLog.LogDebug('Squad "%s" hat %d Units', [SquadNames[I], Length(FSquads[I].UnitIds)]);
+      jachLog.LogDebug('Squad "%s" hat %d Units',
+        [SquadNames[I], Length(FSquads[I].UnitIds)]);
 
       // Arrays für gecachte Daten vorbereiten
       SetLength(FSquads[I].UnitNames, Length(FSquads[I].UnitIds));
@@ -386,7 +410,8 @@ begin
             FSquads[I].UnitKinds[J] := UnitInfo.Kind;
 
             jachLog.LogDebug('Squad "%s" Slot %d: %s "%s" (%s)',
-              [SquadNames[I], J, UnitInfo.Kind, UnitInfo.Name, FSquads[I].UnitIds[J]]);
+              [SquadNames[I], J, UnitInfo.Kind, UnitInfo.Name,
+              FSquads[I].UnitIds[J]]);
 
             // Statistik-Zählung
             if SameText(UnitInfo.Kind, 'Human') then
@@ -402,12 +427,14 @@ begin
                   MaxVet := UnitDetails.Veterancy;
 
                 if UnitDetails.Veterancy > 0 then
-                  jachLog.LogDebug('Unit %s: Veterancy %d', [FSquads[I].UnitIds[J], UnitDetails.Veterancy]);
+                  jachLog.LogDebug('Unit %s: Veterancy %d',
+                    [FSquads[I].UnitIds[J], UnitDetails.Veterancy]);
 
               except
                 on E: Exception do
                 begin
-                  jachLog.LogWarning('Veterancy-Fehler für Unit %s in Squad "%s": %s',
+                  jachLog.LogWarning
+                    ('Veterancy-Fehler für Unit %s in Squad "%s": %s',
                     [FSquads[I].UnitIds[J], SquadNames[I], E.Message]);
                   FSquads[I].UnitVeterancies[J] := 0;
                   Inc(WarningCount);
@@ -423,7 +450,8 @@ begin
           except
             on E: Exception do
             begin
-              jachLog.LogError('Schwerwiegender Unit-Fehler für %s in Squad "%s": %s',
+              jachLog.LogError
+                ('Schwerwiegender Unit-Fehler für %s in Squad "%s": %s',
                 [FSquads[I].UnitIds[J], SquadNames[I], E.Message]);
               FSquads[I].UnitNames[J] := '(Fehler)';
               FSquads[I].UnitVeterancies[J] := 0;
@@ -434,14 +462,16 @@ begin
         end;
 
         // Progress-Update (alle 50 Units)
-        if (ProcessedUnits mod 50 = 0) or (J = Length(FSquads[I].UnitIds) - 1) then
+        if (ProcessedUnits mod 50 = 0) or (J = Length(FSquads[I].UnitIds) - 1)
+        then
           UpdateProgress(ProcessedUnits);
       end;
 
       FSquads[I].MaxVeterancy := MaxVet;
 
       if MaxVet > 0 then
-        jachLog.LogDebug('Squad "%s" maximale Veterancy: %d', [SquadNames[I], MaxVet]);
+        jachLog.LogDebug('Squad "%s" maximale Veterancy: %d',
+          [SquadNames[I], MaxVet]);
     end;
 
     FSquadsDirty := False;
@@ -460,20 +490,25 @@ begin
     jachLog.LogInfo('Warnungen: %d', [WarningCount]);
 
     if ElapsedMs > 5000 then
-      jachLog.LogWarning('Langsame Squad-Verarbeitung: %d ms (> 5s)', [ElapsedMs]);
+      jachLog.LogWarning('Langsame Squad-Verarbeitung: %d ms (> 5s)',
+        [ElapsedMs]);
 
     if ErrorCount > 0 then
-      jachLog.LogWarning('Squad-Verarbeitung mit %d Fehlern abgeschlossen', [ErrorCount])
+      jachLog.LogWarning('Squad-Verarbeitung mit %d Fehlern abgeschlossen',
+        [ErrorCount])
     else if WarningCount > 0 then
-      jachLog.LogInfo('Squad-Verarbeitung mit %d Warnungen abgeschlossen', [WarningCount])
+      jachLog.LogInfo('Squad-Verarbeitung mit %d Warnungen abgeschlossen',
+        [WarningCount])
     else
-      jachLog.LogInfo('Squad-Verarbeitung vollständig erfolgreich abgeschlossen');
+      jachLog.LogInfo
+        ('Squad-Verarbeitung vollständig erfolgreich abgeschlossen');
 
   except
     on E: Exception do
     begin
       jachLog.LogCritical('KRITISCHER FEHLER in LoadSquadsFromSave', E);
-      jachLog.LogCritical('Squad-Verarbeitung abgebrochen nach %d ms', [Round((Now - StartTime) * 24 * 60 * 60 * 1000)]);
+      jachLog.LogCritical('Squad-Verarbeitung abgebrochen nach %d ms',
+        [Round((Now - StartTime) * 24 * 60 * 60 * 1000)]);
       raise;
     end;
   end;
@@ -481,6 +516,7 @@ begin
   HideProgress;
   jachLog.LogDebug('Squad-Verarbeitung UI-Cleanup abgeschlossen');
 end;
+
 
 function TFrmMain.IsEntityUnit(const UnitId: string): Boolean;
 var
@@ -779,15 +815,19 @@ begin
   FileName := OpenDialog1.FileName;
   StartTime := Now;
 
-  jachLog.LogInfo('LADE-OPERATION gestartet für: %s', [ExtractFileName(FileName)]);
+  jachLog.LogInfo('LADE-OPERATION gestartet für: %s',
+    [ExtractFileName(FileName)]);
 
   // Datei-Vorab-Informationen loggen
   try
     FileSize := TFile.GetSize(FileName);
-    jachLog.LogInfo('Dateigröße: %.2f MB (%d Bytes)', [FileSize / (1024*1024), FileSize]);
+    jachLog.LogInfo('Dateigröße: %.2f MB (%d Bytes)',
+      [FileSize / (1024 * 1024), FileSize]);
 
     if FileSize > 100 * 1024 * 1024 then // > 100MB
-      jachLog.LogWarning('Große Savegame-Datei (%.2f MB) - Laden könnte länger dauern', [FileSize / (1024*1024)]);
+      jachLog.LogWarning
+        ('Große Savegame-Datei (%.2f MB) - Laden könnte länger dauern',
+        [FileSize / (1024 * 1024)]);
 
   except
     on E: Exception do
@@ -820,10 +860,12 @@ begin
     jachLog.LogDebug('UI in Normal-Zustand zurückgesetzt');
 
     ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
-    jachLog.LogInfo('LADE-OPERATION erfolgreich abgeschlossen in %d ms', [ElapsedMs]);
+    jachLog.LogInfo('LADE-OPERATION erfolgreich abgeschlossen in %d ms',
+      [ElapsedMs]);
 
     if ElapsedMs > 10000 then // > 10 Sekunden
-      jachLog.LogWarning('Langsame Lade-Performance: %d ms (> 10s)', [ElapsedMs]);
+      jachLog.LogWarning('Langsame Lade-Performance: %d ms (> 10s)',
+        [ElapsedMs]);
 
   except
     on E: Exception do
@@ -835,7 +877,8 @@ begin
       ShowStatus('Fehler beim Laden!');
       jachLog.LogDebug('UI auf Fehler-Zustand gesetzt');
 
-      Application.MessageBox(PChar('Fehler beim Laden: ' + E.Message), 'Fehler', MB_ICONERROR);
+      Application.MessageBox(PChar('Fehler beim Laden: ' + E.Message), 'Fehler',
+        MB_ICONERROR);
     end;
   end;
 
@@ -1033,7 +1076,8 @@ begin
 
   try
     Details := FSave.GetUnitDetails(UnitId);
-    jachLog.LogDebug('Unit-Details geladen für %s: %s "%s"', [UnitId, Details.Kind, Details.Name]);
+    jachLog.LogDebug('Unit-Details geladen für %s: %s "%s"',
+      [UnitId, Details.Kind, Details.Name]);
 
     // Allgemeine Informationen
     MemoInfo.Clear;
@@ -1075,7 +1119,8 @@ begin
 
     // Inventar
     ListViewInventory.Items.Clear;
-    jachLog.LogDebug('Lade Inventar für Unit %s: %d Items', [UnitId, Length(Details.Inventory)]);
+    jachLog.LogDebug('Lade Inventar für Unit %s: %d Items',
+      [UnitId, Length(Details.Inventory)]);
 
     for I := 0 to High(Details.Inventory) do
     begin
@@ -1114,7 +1159,8 @@ begin
   except
     on E: Exception do
     begin
-      jachLog.LogError('Fehler beim Laden der Unit-Details für %s', [UnitId], E);
+      jachLog.LogError('Fehler beim Laden der Unit-Details für %s',
+        [UnitId], E);
       MemoInfo.Clear;
       MemoInfo.Lines.Add('Fehler beim Laden der Unit-Details:');
       MemoInfo.Lines.Add(E.Message);
@@ -1164,7 +1210,8 @@ end;
 
 procedure TFrmMain.ChkOnlyHumansClick(Sender: TObject);
 begin
-  jachLog.LogInfo('Human-Filter geändert auf: %s', [IfThen(ChkOnlyHumans.Checked, 'Nur Menschen', 'Alle Units')]);
+  jachLog.LogInfo('Human-Filter geändert auf: %s',
+    [IfThen(ChkOnlyHumans.Checked, 'Nur Menschen', 'Alle Units')]);
 
   // Bei Änderung der Checkbox die TreeViews neu laden
   if Assigned(FSave) then
@@ -1366,8 +1413,11 @@ begin
   begin
     jachLog.LogInfo('Swap abgebrochen: Nicht beide Units ausgewählt');
     jachLog.LogDebug('TreeBase selection: %s, TreeTarget selection: %s',
-      [IfThen(Assigned(A), 'vorhanden', 'null'), IfThen(Assigned(B), 'vorhanden', 'null')]);
-    Application.MessageBox('Bitte links und rechts jeweils eine Unit auswählen.', 'Hinweis', MB_ICONINFORMATION);
+      [IfThen(Assigned(A), 'vorhanden', 'null'), IfThen(Assigned(B),
+      'vorhanden', 'null')]);
+    Application.MessageBox
+      ('Bitte links und rechts jeweils eine Unit auswählen.', 'Hinweis',
+      MB_ICONINFORMATION);
     Exit;
   end;
 
@@ -1379,24 +1429,37 @@ begin
   TargetSquadIndex := B.SquadIndex;
 
   // Validierungen mit detailliertem Logging
-  if ChkOnlyHumans.Checked and IsValidUnit(A.UnitId) and IsEntityUnit(A.UnitId) then
+  if ChkOnlyHumans.Checked and IsValidUnit(A.UnitId) and IsEntityUnit(A.UnitId)
+  then
   begin
-    jachLog.LogInfo('Swap abgebrochen: Quelle-Unit %s ist Entity bei aktivem Human-Filter', [A.UnitId]);
-    Application.MessageBox('Die linke Unit ist eine Entity und kann bei aktivem Filter nicht verschoben werden.', 'Hinweis', MB_ICONINFORMATION);
+    jachLog.LogInfo
+      ('Swap abgebrochen: Quelle-Unit %s ist Entity bei aktivem Human-Filter',
+      [A.UnitId]);
+    Application.MessageBox
+      ('Die linke Unit ist eine Entity und kann bei aktivem Filter nicht verschoben werden.',
+      'Hinweis', MB_ICONINFORMATION);
     Exit;
   end;
 
-  if ChkOnlyHumans.Checked and IsValidUnit(B.UnitId) and IsEntityUnit(B.UnitId) then
+  if ChkOnlyHumans.Checked and IsValidUnit(B.UnitId) and IsEntityUnit(B.UnitId)
+  then
   begin
-    jachLog.LogInfo('Swap abgebrochen: Ziel-Unit %s ist Entity bei aktivem Human-Filter', [B.UnitId]);
-    Application.MessageBox('Die rechte Unit ist eine Entity und kann bei aktivem Filter nicht verschoben werden.', 'Hinweis', MB_ICONINFORMATION);
+    jachLog.LogInfo
+      ('Swap abgebrochen: Ziel-Unit %s ist Entity bei aktivem Human-Filter',
+      [B.UnitId]);
+    Application.MessageBox
+      ('Die rechte Unit ist eine Entity und kann bei aktivem Filter nicht verschoben werden.',
+      'Hinweis', MB_ICONINFORMATION);
     Exit;
   end;
 
   if (A.SquadIndex = B.SquadIndex) and (SameText(A.UnitId, B.UnitId)) then
   begin
-    jachLog.LogInfo('Swap abgebrochen: Identische Unit ausgewählt (%s)', [A.UnitId]);
-    Application.MessageBox('Die gleiche Unit kann nicht mit sich selbst getauscht werden.', 'Hinweis', MB_ICONINFORMATION);
+    jachLog.LogInfo('Swap abgebrochen: Identische Unit ausgewählt (%s)',
+      [A.UnitId]);
+    Application.MessageBox
+      ('Die gleiche Unit kann nicht mit sich selbst getauscht werden.',
+      'Hinweis', MB_ICONINFORMATION);
     Exit;
   end;
 
@@ -1407,7 +1470,8 @@ begin
     UnitIndexA := -1;
     UnitIndexB := -1;
 
-    jachLog.LogDebug('Suche Index für Quelle-Unit %s in Squad %d', [A.UnitId, A.SquadIndex]);
+    jachLog.LogDebug('Suche Index für Quelle-Unit %s in Squad %d',
+      [A.UnitId, A.SquadIndex]);
     for I := 0 to Length(FSquads[A.SquadIndex].UnitIds) - 1 do
       if SameText(FSquads[A.SquadIndex].UnitIds[I], A.UnitId) then
       begin
@@ -1415,7 +1479,8 @@ begin
         Break;
       end;
 
-    jachLog.LogDebug('Suche Index für Ziel-Unit %s in Squad %d', [B.UnitId, B.SquadIndex]);
+    jachLog.LogDebug('Suche Index für Ziel-Unit %s in Squad %d',
+      [B.UnitId, B.SquadIndex]);
     for I := 0 to Length(FSquads[B.SquadIndex].UnitIds) - 1 do
       if SameText(FSquads[B.SquadIndex].UnitIds[I], B.UnitId) then
       begin
@@ -1425,15 +1490,19 @@ begin
 
     if (UnitIndexA = -1) or (UnitIndexB = -1) then
     begin
-      jachLog.LogError('Unit-Indizes nicht gefunden: UnitA-Index=%d, UnitB-Index=%d', [UnitIndexA, UnitIndexB]);
+      jachLog.LogError
+        ('Unit-Indizes nicht gefunden: UnitA-Index=%d, UnitB-Index=%d',
+        [UnitIndexA, UnitIndexB]);
       raise Exception.Create('Unit-Indizes nicht gefunden');
     end;
 
-    jachLog.LogDebug('Unit-Indizes gefunden: UnitA-Index=%d, UnitB-Index=%d', [UnitIndexA, UnitIndexB]);
+    jachLog.LogDebug('Unit-Indizes gefunden: UnitA-Index=%d, UnitB-Index=%d',
+      [UnitIndexA, UnitIndexB]);
     jachLog.LogInfo('Führe Swap durch: %s (Squad %d[%d]) <-> %s (Squad %d[%d])',
       [A.UnitId, A.SquadIndex, UnitIndexA, B.UnitId, B.SquadIndex, UnitIndexB]);
 
-    SwapUnitsInSquads(A.SquadIndex, UnitIndexA, B.SquadIndex, UnitIndexB, A.UnitId, B.UnitId);
+    SwapUnitsInSquads(A.SquadIndex, UnitIndexA, B.SquadIndex, UnitIndexB,
+      A.UnitId, B.UnitId);
     jachLog.LogDebug('SwapUnitsInSquads erfolgreich ausgeführt');
 
     jachLog.LogDebug('Aktualisiere TreeView-Anzeige');
@@ -1452,15 +1521,18 @@ begin
       ClearInfoPanel;
 
     ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
-    jachLog.LogInfo('SWAP-OPERATION erfolgreich abgeschlossen in %d ms', [ElapsedMs]);
+    jachLog.LogInfo('SWAP-OPERATION erfolgreich abgeschlossen in %d ms',
+      [ElapsedMs]);
     ShowStatus('Units getauscht.');
 
   except
     on E: Exception do
     begin
       ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
-      jachLog.LogError('SWAP-OPERATION fehlgeschlagen nach %d ms', [ElapsedMs], E);
-      Application.MessageBox(PChar('Fehler beim Tauschen: ' + E.Message), 'Fehler', MB_ICONERROR);
+      jachLog.LogError('SWAP-OPERATION fehlgeschlagen nach %d ms',
+        [ElapsedMs], E);
+      Application.MessageBox(PChar('Fehler beim Tauschen: ' + E.Message),
+        'Fehler', MB_ICONERROR);
     end;
   end;
 end;
@@ -1499,13 +1571,15 @@ begin
   try
     if FSquadsDirty then
     begin
-      jachLog.LogInfo('Squad-Daten wurden geändert, aktualisiere Campaign-Daten');
+      jachLog.LogInfo
+        ('Squad-Daten wurden geändert, aktualisiere Campaign-Daten');
       RebuildFCampaignFromSquads;
       jachLog.LogDebug('Campaign-Daten erfolgreich aktualisiert');
     end
     else
     begin
-      jachLog.LogDebug('Squad-Daten unverändert, keine Campaign-Aktualisierung erforderlich');
+      jachLog.LogDebug
+        ('Squad-Daten unverändert, keine Campaign-Aktualisierung erforderlich');
     end;
 
     jachLog.LogDebug('Rufe FSave.SaveToSaveAs auf');
@@ -1518,17 +1592,22 @@ begin
       ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
       jachLog.LogInfo('SPEICHER-OPERATION erfolgreich abgeschlossen:');
       jachLog.LogInfo('- Datei: %s', [ExtractFileName(FileName)]);
-      jachLog.LogInfo('- Größe: %d KB (%.2f MB)', [FileSizeKB, FileSizeKB / 1024]);
+      jachLog.LogInfo('- Größe: %d KB (%.2f MB)',
+        [FileSizeKB, FileSizeKB / 1024]);
       jachLog.LogInfo('- Dauer: %d ms', [ElapsedMs]);
 
       if ElapsedMs > 5000 then
-        jachLog.LogWarning('Langsame Speicher-Performance: %d ms (> 5s)', [ElapsedMs]);
+        jachLog.LogWarning('Langsame Speicher-Performance: %d ms (> 5s)',
+          [ElapsedMs]);
 
     except
       on E: Exception do
       begin
-        jachLog.LogWarning('Konnte Statistiken nach Speichern nicht ermitteln: %s', [E.Message]);
-        jachLog.LogInfo('SPEICHER-OPERATION erfolgreich abgeschlossen: %s', [ExtractFileName(FileName)]);
+        jachLog.LogWarning
+          ('Konnte Statistiken nach Speichern nicht ermitteln: %s',
+          [E.Message]);
+        jachLog.LogInfo('SPEICHER-OPERATION erfolgreich abgeschlossen: %s',
+          [ExtractFileName(FileName)]);
       end;
     end;
 
@@ -1561,7 +1640,8 @@ begin
     on E: Exception do
     begin
       ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
-      jachLog.LogError('SPEICHER-OPERATION fehlgeschlagen nach %d ms', [ElapsedMs], E);
+      jachLog.LogError('SPEICHER-OPERATION fehlgeschlagen nach %d ms',
+        [ElapsedMs], E);
       jachLog.LogError('Zieldatei war: %s', [FileName]);
 
       ShowStatus('Fehler beim Speichern!');
@@ -1573,7 +1653,8 @@ begin
       LblStatus.Visible := True;
       jachLog.LogDebug('Fehler-UI-Feedback aktiviert');
 
-      Application.MessageBox(PChar('Fehler beim Speichern: ' + E.Message), 'Fehler', MB_ICONERROR);
+      Application.MessageBox(PChar('Fehler beim Speichern: ' + E.Message),
+        'Fehler', MB_ICONERROR);
 
       TThread.CreateAnonymousThread(
         procedure
@@ -1649,10 +1730,11 @@ begin
       UpdateProgress(I, Format('Verarbeite Squad %d/%d für CSV-Export',
         [I + 1, Length(FAllSquadNames)]));
 
-      jachLog.LogDebug('Exportiere Squad %d: "%s"', [I+1, FAllSquadNames[I]]);
+      jachLog.LogDebug('Exportiere Squad %d: "%s"', [I + 1, FAllSquadNames[I]]);
 
       Units := FSave.GetSquadMembers(I);
-      jachLog.LogDebug('Squad "%s" hat %d Units', [FAllSquadNames[I], Length(Units)]);
+      jachLog.LogDebug('Squad "%s" hat %d Units',
+        [FAllSquadNames[I], Length(Units)]);
 
       for J := 0 to Length(Units) - 1 do
       begin
@@ -1677,7 +1759,9 @@ begin
               except
                 on E: Exception do
                 begin
-                  jachLog.LogWarning('CSV-Export: Veterancy-Fehler für Unit %s: %s', [Units[J], E.Message]);
+                  jachLog.LogWarning
+                    ('CSV-Export: Veterancy-Fehler für Unit %s: %s',
+                    [Units[J], E.Message]);
                   Inc(ErrorCount);
                 end;
               end;
@@ -1716,7 +1800,8 @@ begin
     jachLog.LogInfo('- Dauer: %d ms', [ElapsedMs]);
 
     if ErrorCount > 0 then
-      jachLog.LogWarning('CSV-Export mit %d Fehlern abgeschlossen', [ErrorCount])
+      jachLog.LogWarning('CSV-Export mit %d Fehlern abgeschlossen',
+        [ErrorCount])
     else
       jachLog.LogInfo('CSV-Export vollständig erfolgreich abgeschlossen');
 
@@ -1727,7 +1812,8 @@ begin
     begin
       jachLog.LogError('CSV-EXPORT fehlgeschlagen', E);
       ShowStatus('Fehler beim CSV-Export!');
-      Application.MessageBox(PChar('Fehler beim CSV-Export: ' + E.Message), 'Fehler', MB_ICONERROR);
+      Application.MessageBox(PChar('Fehler beim CSV-Export: ' + E.Message),
+        'Fehler', MB_ICONERROR);
     end;
   end;
 
@@ -1736,7 +1822,8 @@ begin
     jachLog.LogDebug('CSV-StringList freigegeben');
   except
     on E: Exception do
-      jachLog.LogWarning('Fehler beim Freigeben der CSV-StringList: %s', [E.Message]);
+      jachLog.LogWarning('Fehler beim Freigeben der CSV-StringList: %s',
+        [E.Message]);
   end;
 
   SetUILoadingState(False);
@@ -1791,6 +1878,28 @@ begin
     if FSquads[ASquadIndex].UnitVeterancies[I] > MaxVet then
       MaxVet := FSquads[ASquadIndex].UnitVeterancies[I];
   FSquads[ASquadIndex].MaxVeterancy := MaxVet;
+end;
+
+procedure TFrmMain.UncheckMenu(AMenuItem: TMenuItem);
+var
+i: integer;
+begin
+  for i := 0  to AMenuItem.Count -1 do
+    AMenuItem.Items[i].Checked := False;
+end;
+
+procedure TFrmMain.DebugLevelClick(Sender: TObject);
+var
+  MenuItem: TMenuItem;
+begin
+  if Sender is TMenuItem then
+  begin
+    MenuItem := TMenuItem(Sender);
+    jachLog.LogLevel[jachLog.DefaultTopic] := TLogLevel(MenuItem.Tag);
+    UncheckMenu(Debuglevel);
+    MenuItem.Checked := True;
+      jachLog.LogEmergency('Benutzer hat den Debuglevel auf ' + MenuItem.Caption + ' gesetzt');
+  end;
 end;
 
 end.
