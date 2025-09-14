@@ -210,21 +210,6 @@ object FrmMain: TFrmMain
         ViewStyle = vsReport
       end
     end
-    object TabDebug: TTabSheet
-      Caption = 'Debug'
-      ImageIndex = 2
-      object MemoDebug: TMemo
-        Left = 0
-        Top = 0
-        Width = 852
-        Height = 162
-        Align = alClient
-        Lines.Strings = (
-          'MemoDebug')
-        ScrollBars = ssBoth
-        TabOrder = 0
-      end
-    end
   end
   object OpenDialog1: TOpenDialog
     Options = [ofFileMustExist, ofEnableSizing]
@@ -241,46 +226,55 @@ object FrmMain: TFrmMain
         Caption = 'Debuglevel'
         object Off1: TMenuItem
           Caption = 'Off'
+          Hint = 'Off'
           OnClick = DebugLevelClick
         end
         object Emergency1: TMenuItem
           Tag = 1
           Caption = 'Emergency'
+          Hint = 'Emergency'
           OnClick = DebugLevelClick
         end
         object Alert1: TMenuItem
           Tag = 2
           Caption = 'Alert'
+          Hint = 'Alert'
         end
         object Critical1: TMenuItem
           Tag = 3
           Caption = 'Critical'
+          Hint = 'Critical'
           OnClick = DebugLevelClick
         end
         object Error1: TMenuItem
           Tag = 4
           Caption = 'Error'
+          Hint = 'Error'
           OnClick = DebugLevelClick
         end
         object Warning1: TMenuItem
           Tag = 5
           Caption = 'Warning'
+          Hint = 'Warning'
           OnClick = DebugLevelClick
         end
         object Notice1: TMenuItem
           Tag = 6
           Caption = 'Notice'
+          Hint = 'Notice'
           OnClick = DebugLevelClick
         end
         object Info1: TMenuItem
           Tag = 7
           Caption = 'Info'
+          Hint = 'Info'
           OnClick = DebugLevelClick
         end
         object Debug1: TMenuItem
           Tag = 8
           Caption = 'Debug'
           Checked = True
+          Hint = 'Debug'
           OnClick = DebugLevelClick
         end
       end

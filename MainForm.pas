@@ -1,4 +1,8 @@
 ﻿{ TODO 1 -oDaniel -cVital : Problem mit Statusdatei und Name des Spielstands lösen }
+{ TODO -cFeature :
+  Backup der Save-Dateien mit Zeitstempel
+  Fokus on Unit Fixen
+  Möglichkeit Units neu zu sortieren und anzuordnen }
 unit MainForm;
 
 interface
@@ -45,13 +49,6 @@ type
     LblBaseInfo: TLabel;
     LblTargetInfo: TLabel;
     ChkOnlyHumans: TCheckBox;
-    PageControl1: TPageControl;
-    TabGeneral: TTabSheet;
-    TabInventory: TTabSheet;
-    MemoInfo: TMemo;
-    ListViewInventory: TListView;
-    TabDebug: TTabSheet;
-    MemoDebug: TMemo;
     ProgressBar1: TProgressBar;
     LblStatus: TLabel;
     MainMenu1: TMainMenu;
@@ -66,6 +63,11 @@ type
     Info1: TMenuItem;
     Debug1: TMenuItem;
     Alert1: TMenuItem;
+    PageControl1: TPageControl;
+    TabGeneral: TTabSheet;
+    MemoInfo: TMemo;
+    TabInventory: TTabSheet;
+    ListViewInventory: TListView;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
@@ -78,7 +80,7 @@ type
     procedure ChkOnlyHumansClick(Sender: TObject);
     procedure TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
       State: TCustomDrawState; var DefaultDraw: Boolean);
-      procedure DebugLevelClick(Sender: TObject);
+    procedure DebugLevelClick(Sender: TObject);
 
   private
     FSquads: TArray<TSquadData>; // Live-Datenstruktur
@@ -120,7 +122,7 @@ type
     procedure HideProgress;
     procedure SetUILoadingState(ALoading: Boolean);
     procedure UncheckMenu(AMenuItem: TMenuItem);
-      public
+  public
   end;
 
 var
@@ -516,7 +518,6 @@ begin
   HideProgress;
   jachLog.LogDebug('Squad-Verarbeitung UI-Cleanup abgeschlossen');
 end;
-
 
 function TFrmMain.IsEntityUnit(const UnitId: string): Boolean;
 var
@@ -1308,13 +1309,8 @@ var
   I: Integer;
   Node, ChildNode: TTreeNode;
   Info, ChildInfo: TNodeInfo;
-  DebugLog: TStringList;
 begin
-  DebugLog := TStringList.Create;
   try
-    DebugLog.Add(Format('=== SUCHE Squad %d, Unit %s ===',
-      [ASquadIndex, AUnitId]));
-
     // Erst den Squad finden und expandieren
     for I := 0 to ATree.Items.Count - 1 do
     begin
@@ -1322,67 +1318,36 @@ begin
       if Assigned(Node.Data) then
       begin
         Info := TNodeInfo(Node.Data);
-        DebugLog.Add(Format('Squad %d gefunden, Text: "%s"',
-          [Info.SquadIndex, Node.Text]));
 
         if (Info.Kind = nkSquad) and (Info.SquadIndex = ASquadIndex) then
         begin
           Node.Expand(False);
-          DebugLog.Add(Format('>>> ZIEL-SQUAD GEFUNDEN! Hat %d Kinder',
-            [Node.Count]));
 
           // Jetzt die spezifische Unit in diesem Squad suchen
           ChildNode := Node.getFirstChild;
           while Assigned(ChildNode) do
           begin
-            DebugLog.Add(Format('  Kind: "%s"', [ChildNode.Text]));
-
             if Assigned(ChildNode.Data) then
             begin
               ChildInfo := TNodeInfo(ChildNode.Data);
-              DebugLog.Add
-                (Format('    Kind-UnitId: "%s", Suche: "%s", Match: %s',
-                [ChildInfo.UnitId, AUnitId, BoolToStr(SameText(ChildInfo.UnitId,
-                AUnitId), True)]));
 
               if (ChildInfo.Kind = nkUnit) and
                 SameText(ChildInfo.UnitId, AUnitId) then
               begin
-                DebugLog.Add('*** GEFUNDEN! Fokussiere Unit ***');
-
-                // Debug-Log ins Memo schreiben
-                MemoDebug.Lines.Clear;
-                MemoDebug.Lines.AddStrings(DebugLog);
-
-                // ATree.Selected := ChildNode;   Erst mal so
                 ATree.Selected := Node;
+                // Notlösung da richtige Unit nicht gefunden wird und Restoreto Sqad nicht geht.
                 Exit;
               end;
             end;
 
             ChildNode := ChildNode.getNextSibling;
           end;
-
-          DebugLog.Add('>>> Unit nicht gefunden, fokussiere Squad');
-
-          // Debug-Log ins Memo schreiben
-          MemoDebug.Lines.Clear;
-          MemoDebug.Lines.AddStrings(DebugLog);
-
           ATree.Selected := Node;
           Exit;
         end;
       end;
     end;
-
-    DebugLog.Add('>>> Squad nicht gefunden!');
-
-    // Debug-Log ins Memo schreiben
-    MemoDebug.Lines.Clear;
-    MemoDebug.Lines.AddStrings(DebugLog);
-
   finally
-    DebugLog.Free;
   end;
 end;
 
@@ -1882,10 +1847,10 @@ end;
 
 procedure TFrmMain.UncheckMenu(AMenuItem: TMenuItem);
 var
-i: integer;
+  I: Integer;
 begin
-  for i := 0  to AMenuItem.Count -1 do
-    AMenuItem.Items[i].Checked := False;
+  for I := 0 to AMenuItem.Count - 1 do
+    AMenuItem.Items[I].Checked := False;
 end;
 
 procedure TFrmMain.DebugLevelClick(Sender: TObject);
@@ -1898,7 +1863,8 @@ begin
     jachLog.LogLevel[jachLog.DefaultTopic] := TLogLevel(MenuItem.Tag);
     UncheckMenu(Debuglevel);
     MenuItem.Checked := True;
-      jachLog.LogEmergency('Benutzer hat den Debuglevel auf ' + MenuItem.Caption + ' gesetzt');
+    jachLog.LogEmergency('Benutzer hat den Debuglevel auf ' + MenuItem.Hint +
+      ' gesetzt');
   end;
 end;
 
