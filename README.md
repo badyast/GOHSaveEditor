@@ -17,7 +17,7 @@ Die Nutzung geschieht auf eigene Verantwortung.
 - Savegames öffnen und bearbeiten  
 - Einheiten und Squads anpassen  
 - Änderungen speichern und ins Spiel zurückladen  
-- Unterstützung mehrerer Spielstände (Kampagnen, Missionen, Gefechte)  
+- Unterstützung für Spielstände der Dynamischen Kampagnen  
 
 ---
 
