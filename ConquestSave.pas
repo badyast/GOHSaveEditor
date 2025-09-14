@@ -1,21 +1,5 @@
 ﻿unit ConquestSave;
-{
-  Delphi 12 class that mirrors the core functionality of Editor.py for
-  Gates of Hell Conquest save editing.
 
-  Features:
-  - Load a .sav (zip) file, extract campaign.scn + status
-  - Parse CampaignSquads block to read squad names and unit IDs
-  - Read unit info (Human/Entity, Unit name) by UnitId
-  - Read detailed unit information (veterancy, kills, score, inventory)
-  - Move a unit to another squad
-  - Exchange two units between squads
-  - Repack the .sav using Deflate compression
-
-  Notes:
-  * All squad indexes are 0-based (matching Delphi/combobox conventions).
-  * Unit IDs are strings like '0xABCD'.
-}
 
 interface
 

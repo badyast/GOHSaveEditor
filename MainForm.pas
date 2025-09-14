@@ -3,6 +3,7 @@
   Backup der Save-Dateien mit Zeitstempel
   Fokus on Unit Fixen
   Möglichkeit Units neu zu sortieren und anzuordnen }
+{ TODO : Temporäres Verzeichnis löschen }
 unit MainForm;
 
 interface
