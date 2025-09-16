@@ -116,7 +116,7 @@ type
     procedure RestoreFocusToUnit(ATree: TTreeView; ASquadIndex: Integer;
       const AUnitId: string);
 
-    // ← NEU: Fortschritts- und Status-Methoden
+    // Fortschritts- und Status-Methoden
     procedure ShowProgress(const AMessage: string; AMaxValue: Integer = 0);
     procedure UpdateProgress(ACurrentValue: Integer;
       const AMessage: string = '');

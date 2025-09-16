@@ -1,6 +1,5 @@
 ﻿unit ConquestSave;
 
-
 interface
 
 uses
@@ -53,6 +52,7 @@ type
     FWorkDir: string; // Temp working directory
     FCampaignPath: string; // <WorkDir>/campaign.scn
     FStatusPath: string; // <WorkDir>/status
+    FTempExtractDir: string;
     FCampaign: TStringList;
 
     function ReadAllText: string;
@@ -99,6 +99,9 @@ type
     property WorkDir: string read FWorkDir;
     property CampaignPath: string read FCampaignPath;
     property StatusPath: string read FStatusPath;
+
+    // Cleanup
+    procedure CleanupTempDirectory;
   end;
 
 implementation
@@ -113,8 +116,20 @@ end;
 
 destructor TConquestSave.Destroy;
 begin
-  FCampaign.Free;
-  inherited;
+  jachLog.LogDebug('TConquestSave.Destroy aufgerufen');
+
+  // Temp-Verzeichnis aufräumen beim Zerstören des Objekts
+  CleanupTempDirectory;
+
+  // Andere Ressourcen freigeben
+  if Assigned(FCampaign) then
+  begin
+    FCampaign.Free;
+    jachLog.LogDebug('FCampaign freigegeben');
+  end;
+
+  inherited Destroy;
+  jachLog.LogDebug('TConquestSave.Destroy abgeschlossen');
 end;
 
 procedure TConquestSave.LoadFromFolder(const AFolder: string);
@@ -160,6 +175,10 @@ begin
   CreateGUID(G);
   ExtractDir := TPath.Combine(TPath.GetTempPath,
     'ConquestSave_' + GUIDToString(G));
+
+  FTempExtractDir := ExtractDir;
+  jachLog.LogDebug('Temp-Verzeichnis für späteres Cleanup gespeichert: %s',
+    [FTempExtractDir]);
 
   try
     TDirectory.CreateDirectory(ExtractDir);
@@ -217,18 +236,7 @@ begin
       jachLog.LogError('Fehler beim Laden aus extrahiertem Ordner', E);
 
       // Cleanup bei Fehler
-      try
-        if TDirectory.Exists(ExtractDir) then
-        begin
-          TDirectory.Delete(ExtractDir, True);
-          jachLog.LogDebug('Temporäres Verzeichnis nach Fehler bereinigt');
-        end;
-      except
-        on CleanupE: Exception do
-          jachLog.LogWarning
-            ('Konnte temporäres Verzeichnis nicht löschen: %s - %s',
-            [ExtractDir, CleanupE.Message]);
-      end;
+      CleanupTempDirectory;
 
       raise;
     end;
@@ -276,11 +284,14 @@ begin
 
   if (FWorkDir = '') or (not TDirectory.Exists(FWorkDir)) then
   begin
-    jachLog.LogError('Arbeitsverzeichnis ungültig oder nicht gesetzt: %s', [FWorkDir]);
-    raise EConquestSave.Create('Working folder is invalid or not set. Load a save first.');
+    jachLog.LogError('Arbeitsverzeichnis ungültig oder nicht gesetzt: %s',
+      [FWorkDir]);
+    raise EConquestSave.Create
+      ('Working folder is invalid or not set. Load a save first.');
   end;
 
-  jachLog.LogDebug('Sammle alle Dateien aus Arbeitsverzeichnis: %s', [FWorkDir]);
+  jachLog.LogDebug('Sammle alle Dateien aus Arbeitsverzeichnis: %s',
+    [FWorkDir]);
   Files := TDirectory.GetFiles(FWorkDir, '*', TSearchOption.soAllDirectories);
   FileCount := Length(Files);
   jachLog.LogInfo('Gefunden: %d Dateien zum Packen', [FileCount]);
@@ -315,14 +326,18 @@ begin
   ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
 
   try
-    var FinalSize := TFile.GetSize(DestFile);
+    var
+    FinalSize := TFile.GetSize(DestFile);
     jachLog.LogInfo('ConquestSave.SaveToSaveAs erfolgreich abgeschlossen:');
     jachLog.LogInfo('- Zieldatei: %s', [DestFile]);
-    jachLog.LogInfo('- Größe: %.2f MB (%d Bytes)', [FinalSize / (1024*1024), FinalSize]);
+    jachLog.LogInfo('- Größe: %.2f MB (%d Bytes)', [FinalSize / (1024 * 1024),
+      FinalSize]);
     jachLog.LogInfo('- Gepackte Dateien: %d', [FileCount]);
     jachLog.LogInfo('- Dauer: %d ms', [ElapsedMs]);
   except
-    jachLog.LogInfo('ConquestSave.SaveToSaveAs erfolgreich abgeschlossen in %d ms', [ElapsedMs]);
+    jachLog.LogInfo
+      ('ConquestSave.SaveToSaveAs erfolgreich abgeschlossen in %d ms',
+      [ElapsedMs]);
   end;
 end;
 
@@ -773,6 +788,78 @@ begin
 
   SetSquadLine(BaseSquadIndex, BaseLine);
   SetSquadLine(TargetSquadIndex, TargetLine);
+end;
+
+procedure TConquestSave.CleanupTempDirectory;
+var
+  StartTime: TDateTime;
+  ElapsedMs: Integer;
+  FileCount: Integer;
+  DirSize: Int64;
+begin
+  if FTempExtractDir = '' then
+  begin
+    jachLog.LogDebug
+      ('CleanupTempDirectory: Kein Temp-Verzeichnis zum Bereinigen vorhanden');
+    Exit;
+  end;
+
+  if not TDirectory.Exists(FTempExtractDir) then
+  begin
+    jachLog.LogDebug
+      ('CleanupTempDirectory: Temp-Verzeichnis existiert nicht mehr: %s',
+      [FTempExtractDir]);
+    FTempExtractDir := '';
+    Exit;
+  end;
+
+  StartTime := Now;
+  jachLog.LogInfo('=== CLEANUP-OPERATION gestartet ===');
+  jachLog.LogInfo('Bereinige Temp-Verzeichnis: %s', [FTempExtractDir]);
+
+  try
+    // Statistiken sammeln vor dem Löschen
+    try
+      var
+      Files := TDirectory.GetFiles(FTempExtractDir, '*',
+        TSearchOption.soAllDirectories);
+      FileCount := Length(Files);
+      DirSize := 0;
+      for var F in Files do
+        Inc(DirSize, TFile.GetSize(F));
+
+      jachLog.LogDebug('Temp-Verzeichnis enthält %d Dateien (%.2f MB)',
+        [FileCount, DirSize / (1024 * 1024)]);
+    except
+      on E: Exception do
+        jachLog.LogWarning('Konnte Statistiken nicht ermitteln: %s',
+          [E.Message]);
+    end;
+
+    // Verzeichnis löschen
+    TDirectory.Delete(FTempExtractDir, True);
+
+    ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
+    jachLog.LogInfo('CLEANUP-OPERATION erfolgreich abgeschlossen:');
+    jachLog.LogInfo('- Verzeichnis: %s', [ExtractFileName(FTempExtractDir)]);
+    jachLog.LogInfo('- Gelöschte Dateien: %d', [FileCount]);
+    jachLog.LogInfo('- Freigegebener Speicher: %.2f MB',
+      [DirSize / (1024 * 1024)]);
+    jachLog.LogInfo('- Dauer: %d ms', [ElapsedMs]);
+
+    FTempExtractDir := '';
+
+  except
+    on E: Exception do
+    begin
+      jachLog.LogError('Fehler beim Bereinigen des Temp-Verzeichnisses: %s',
+        [FTempExtractDir], E);
+      jachLog.LogWarning
+        ('Temp-Verzeichnis konnte nicht gelöscht werden und bleibt zurück');
+      // Trotzdem zurücksetzen, damit wir es nicht nochmal versuchen
+      FTempExtractDir := '';
+    end;
+  end;
 end;
 
 end.
