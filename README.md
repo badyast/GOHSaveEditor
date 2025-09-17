@@ -6,7 +6,7 @@
 [![Buy Me a Coffee](https://img.shields.io/badge/☕-Buy%20me%20a%20coffee-orange.svg)](https://www.buymeacoffee.com/badyast)
 
 Ein inoffizieller Editor für Spielstände von **Gates of Hell: Ostfront**.  
-Mit diesem Tool kannst du deine Savegames bequem laden, ändern und wieder speichern.  
+Mit diesem Tool kannst du deine gespeicherten Kampagnen bequem laden, ändern und wieder speichern.  
 
 ⚠️ **Hinweis:** Dieses Tool befindet sich in aktiver Entwicklung. Fehler oder Inkompatibilitäten können auftreten.  
 Die Nutzung geschieht auf eigene Verantwortung.
