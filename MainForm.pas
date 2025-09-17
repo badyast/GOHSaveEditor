@@ -2163,7 +2163,12 @@ const
     (Criteria: scEntityCount; Direction: sdAscending; Caption: 'Nach Anzahl Entities (aufsteigend)'),
     (Criteria: scEntityCount; Direction: sdDescending; Caption: 'Nach Anzahl Entities (absteigend)')
   );
-  SEPARATOR_AFTER: set of Integer = [1, 3, 7, 9]; // Nach welchen Indizes Trennstriche kommen
+
+  function NeedsSeparatorAfter(Index: Integer): Boolean;
+  begin
+    Result := (Index = 1) or (Index = 3) or (Index = 7) or (Index = 9);
+  end;
+
 var
   SortMenu: TMenuItem;
   MenuItem, SepItem: TMenuItem;
@@ -2187,7 +2192,7 @@ begin
     SortMenu.Add(MenuItem);
 
     // Trennstrich nach bestimmten Items
-    if I in SEPARATOR_AFTER then
+    if NeedsSeparatorAfter(I) then
     begin
       SepItem := TMenuItem.Create(Self);
       SepItem.Caption := '-';
