@@ -120,6 +120,7 @@ type
     FSquadsDirty: Boolean; // Änderungen pending?
     FSave: TConquestSave;
     FAllSquadNames: TArray<string>;
+    FSortMenuInfos: TArray<TSortMenuInfo>; // Array für Sortier-Informationen
     procedure SetControlsEnabled(AEnabled: Boolean);
     procedure ClearTreeData(ATree: TTreeView);
     procedure PopulateTrees;
@@ -155,6 +156,8 @@ type
     procedure HideProgress;
     procedure SetUILoadingState(ALoading: Boolean);
     procedure UncheckMenu(AMenuItem: TMenuItem);
+    procedure SortMenuItemClick(Sender: TObject);
+    procedure AddSortMenuItems;
     procedure AnalyzeSquadForSorting(SquadIndex: Integer;
       var SortInfo: TSquadSortInfo);
     function GetSortCriteriaDisplayName(Criteria: TSquadSortCriteria): string;
@@ -222,6 +225,8 @@ begin
       raise;
     end;
   end;
+  // Squad-Sortierung Menü hinzufügen
+  AddSortMenuItems;
 end;
 
 // ← NEU: Fortschritts-Methoden
@@ -2124,6 +2129,73 @@ begin
   end;
 end;
 
+// Kompakte Event-Handler-Lösung für Sortierung
+procedure TFrmMain.SortMenuItemClick(Sender: TObject);
+var
+  MenuItem: TMenuItem;
+  SortInfo: TSortMenuInfo;
+begin
+  if Sender is TMenuItem then
+  begin
+    MenuItem := TMenuItem(Sender);
+    // Tag enthält Index ins FSortMenuInfos-Array
+    if (MenuItem.Tag >= 0) and (MenuItem.Tag < Length(FSortMenuInfos)) then
+    begin
+      SortInfo := FSortMenuInfos[MenuItem.Tag];
+      SortSquads(SortInfo.Criteria, SortInfo.Direction);
+    end;
+  end;
+end;
 
+procedure TFrmMain.AddSortMenuItems;
+const
+  SORT_MENU_INFOS: array[0..11] of TSortMenuInfo = (
+    (Criteria: scName; Direction: sdAscending; Caption: 'Nach Name (A-Z)'),
+    (Criteria: scName; Direction: sdDescending; Caption: 'Nach Name (Z-A)'),
+    (Criteria: scUnitCount; Direction: sdAscending; Caption: 'Nach Unit-Anzahl (aufsteigend)'),
+    (Criteria: scUnitCount; Direction: sdDescending; Caption: 'Nach Unit-Anzahl (absteigend)'),
+    (Criteria: scAverageVet; Direction: sdAscending; Caption: 'Nach durchschn. Veteranenstufe (aufsteigend)'),
+    (Criteria: scAverageVet; Direction: sdDescending; Caption: 'Nach durchschn. Veteranenstufe (absteigend)'),
+    (Criteria: scMaxVet; Direction: sdAscending; Caption: 'Nach max. Veteranenstufe (aufsteigend)'),
+    (Criteria: scMaxVet; Direction: sdDescending; Caption: 'Nach max. Veteranenstufe (absteigend)'),
+    (Criteria: scHumanCount; Direction: sdAscending; Caption: 'Nach Anzahl Menschen (aufsteigend)'),
+    (Criteria: scHumanCount; Direction: sdDescending; Caption: 'Nach Anzahl Menschen (absteigend)'),
+    (Criteria: scEntityCount; Direction: sdAscending; Caption: 'Nach Anzahl Entities (aufsteigend)'),
+    (Criteria: scEntityCount; Direction: sdDescending; Caption: 'Nach Anzahl Entities (absteigend)')
+  );
+  SEPARATOR_AFTER: set of Integer = [1, 3, 7, 9]; // Nach welchen Indizes Trennstriche kommen
+var
+  SortMenu: TMenuItem;
+  MenuItem, SepItem: TMenuItem;
+  I: Integer;
+begin
+  // Array für Event-Handler speichern
+  SetLength(FSortMenuInfos, Length(SORT_MENU_INFOS));
+  for I := 0 to High(SORT_MENU_INFOS) do
+    FSortMenuInfos[I] := SORT_MENU_INFOS[I];
+
+  SortMenu := TMenuItem.Create(Self);
+  SortMenu.Caption := '&Sortieren';
+
+  // Menü-Items in Schleife erstellen
+  for I := 0 to High(SORT_MENU_INFOS) do
+  begin
+    MenuItem := TMenuItem.Create(Self);
+    MenuItem.Caption := SORT_MENU_INFOS[I].Caption;
+    MenuItem.Tag := I; // Index für Event-Handler
+    MenuItem.OnClick := SortMenuItemClick;
+    SortMenu.Add(MenuItem);
+
+    // Trennstrich nach bestimmten Items
+    if I in SEPARATOR_AFTER then
+    begin
+      SepItem := TMenuItem.Create(Self);
+      SepItem.Caption := '-';
+      SortMenu.Add(SepItem);
+    end;
+  end;
+
+  MainMenu1.Items.Add(SortMenu);
+end;
 
 end.
