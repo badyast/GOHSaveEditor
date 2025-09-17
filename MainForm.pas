@@ -2093,19 +2093,68 @@ end;
 procedure TFrmMain.UpdateCampaignScnFromSquads;
 var
   I: Integer;
-  NewSquadLine: string;
+  OriginalSquadLines: TArray<string>;
+  SortedSquadLines: TArray<string>;
+  SquadIndices: TArray<Integer>;
+  SquadNames: TArray<string>;
+  FoundIndex: Integer;
 begin
   jachLog.LogInfo('Aktualisiere campaign.scn mit neuer Squad-Reihenfolge');
 
+  // 1. Alle ursprünglichen Squad-Zeilen sammeln
+  SquadNames := FSave.GetSquadNames;
+  SetLength(OriginalSquadLines, Length(SquadNames));
+
+  for I := 0 to Length(SquadNames) - 1 do
+  begin
+    OriginalSquadLines[I] := FSave.GetSquadLine(I);
+    jachLog.LogDebug('Original Squad %d: "%s"', [I, SquadNames[I]]);
+  end;
+
+  // 2. Squad-Zeilen in neuer Reihenfolge anordnen (entsprechend FSquads)
+  SetLength(SortedSquadLines, Length(FSquads));
+
   for I := 0 to Length(FSquads) - 1 do
   begin
-    NewSquadLine := FSave.ReplaceUnitIdsInSquadLine(FSave.GetSquadLine(I),
-      FSquads[I].UnitIds);
-    FSave.SetSquadLine(I, NewSquadLine);
+    // Finde die ursprüngliche Squad-Zeile für diesen Squad-Namen
+    FoundIndex := -1;
+    for var J := 0 to Length(SquadNames) - 1 do
+    begin
+      if SameText(SquadNames[J], FSquads[I].Name) then
+      begin
+        FoundIndex := J;
+        Break;
+      end;
+    end;
 
-    jachLog.LogDebug('Squad %d: "%s" mit %d Units aktualisiert',
-      [I, FSquads[I].Name, Length(FSquads[I].UnitIds)]);
+    if FoundIndex >= 0 then
+    begin
+      // Verwende die ursprüngliche Zeile, aber mit aktualisierten Unit-IDs
+      SortedSquadLines[I] := FSave.ReplaceUnitIdsInSquadLine(
+        OriginalSquadLines[FoundIndex],
+        FSquads[I].UnitIds);
+
+      jachLog.LogDebug('Position %d: Squad "%s" (ursprünglich Index %d)',
+        [I, FSquads[I].Name, FoundIndex]);
+    end
+    else
+    begin
+      jachLog.LogError('Squad "%s" nicht in ursprünglichen Squad-Namen gefunden!',
+        [FSquads[I].Name]);
+      // Fallback: leere Zeile
+      SortedSquadLines[I] := '';
+    end;
   end;
+
+  // 3. Alle Squad-Zeilen in der campaign.scn durch die sortierte Reihenfolge ersetzen
+  for I := 0 to Length(SortedSquadLines) - 1 do
+  begin
+    FSave.SetSquadLine(I, SortedSquadLines[I]);
+    jachLog.LogDebug('Squad-Zeile %d in campaign.scn aktualisiert', [I]);
+  end;
+
+  jachLog.LogInfo('Campaign.scn erfolgreich mit %d Squads in neuer Reihenfolge aktualisiert',
+    [Length(SortedSquadLines)]);
 end;
 
 function TFrmMain.GetSortCriteriaDisplayName
