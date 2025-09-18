@@ -36,31 +36,19 @@ type
     MaxVeterancy: Integer;
   end;
 
-  // Erweiterte Squad-Struktur für Sortierung
-type
-  TSquadSortCriteria = (scName, // Nach Name
-    scUnitCount, // Nach Anzahl Units
-    scAverageVet, // Nach durchschnittlicher Veteranenstufe
-    scMaxVet, // Nach höchster Veteranenstufe
-    scHumanCount, // Nach Anzahl menschlicher Einheiten
-    scEntityCount // Nach Anzahl Entity-Einheiten
-    );
-
-  TSquadSortDirection = (sdAscending, sdDescending);
-
-  TSquadSortInfo = record
-    Index: Integer;
-    Name: string;
-    UnitCount: Integer;
-    HumanCount: Integer;
-    EntityCount: Integer;
-    AverageVet: Double;
-    MaxVet: Integer;
-    TotalVet: Integer;
-    SquadData: TSquadData; // Ihre bestehende TSquadData Struktur
-  end;
-
-  // Kompakte Event-Handler-Lösung für Sortierung
+//  TSquadSortInfo = record
+//    Index: Integer;
+//    Name: string;
+//    UnitCount: Integer;
+//    HumanCount: Integer;
+//    EntityCount: Integer;
+//    AverageVet: Double;
+//    MaxVet: Integer;
+//    TotalVet: Integer;
+//    SquadData: TSquadData; // Ihre bestehende TSquadData Struktur
+//  end;
+//
+//  // Kompakte Event-Handler-Lösung für Sortierung
 type
   TSortMenuInfo = record
     Criteria: TSquadSortCriteria;
@@ -158,15 +146,15 @@ type
     procedure UncheckMenu(AMenuItem: TMenuItem);
     procedure SortMenuItemClick(Sender: TObject);
     procedure AddSortMenuItems;
-    procedure AnalyzeSquadForSorting(SquadIndex: Integer;
-      var SortInfo: TSquadSortInfo);
-    function GetSortCriteriaDisplayName(Criteria: TSquadSortCriteria): string;
-    procedure SortSquadInfos(var SortInfos: TArray<TSquadSortInfo>;
-      Criteria: TSquadSortCriteria; Direction: TSquadSortDirection);
-    procedure SortSquads(Criteria: TSquadSortCriteria;
-      Direction: TSquadSortDirection);
-    procedure UpdateCampaignScnFromSquads;
+        function GetSortCriteriaDisplayName(Criteria: TSquadSortCriteria): string;
+
+
+
+
   public
+
+  procedure SortSquads(Criteria: TSquadSortCriteria;
+      Direction: TSquadSortDirection);
   end;
 
 var
@@ -226,7 +214,7 @@ begin
     end;
   end;
   // Squad-Sortierung Menü hinzufügen
-  AddSortMenuItems;
+  //AddSortMenuItems;
 end;
 
 // ← NEU: Fortschritts-Methoden
@@ -1914,12 +1902,8 @@ begin
   end;
 end;
 
-procedure TFrmMain.SortSquads(Criteria: TSquadSortCriteria;
-Direction: TSquadSortDirection);
+procedure TFrmMain.SortSquads(Criteria: TSquadSortCriteria; Direction: TSquadSortDirection);
 var
-  SortInfos: TArray<TSquadSortInfo>;
-  I, J: Integer;
-  NewSquads: TArray<TSquadData>;
   StartTime: TDateTime;
   ElapsedMs: Integer;
 begin
@@ -1927,63 +1911,54 @@ begin
   jachLog.LogInfo('=== Squad-Sortierung gestartet ===');
   jachLog.LogInfo('Kriterium: %s, Richtung: %s',
     [GetEnumName(TypeInfo(TSquadSortCriteria), Ord(Criteria)),
-    GetEnumName(TypeInfo(TSquadSortDirection), Ord(Direction))]);
+     GetEnumName(TypeInfo(TSquadSortDirection), Ord(Direction))]);
 
-  if Length(FSquads) = 0 then
+  // Prüfung auf ungespeicherte Änderungen
+  if FSquadsDirty then
   begin
-    jachLog.LogWarning('Keine Squads zum Sortieren verfügbar');
-    Exit;
+    case Application.MessageBox(
+      'Sie haben ungespeicherte Änderungen an den Squad-Zusammenstellungen. ' +
+      'Diese müssen vor der Sortierung gespeichert werden.'#13#13 +
+      'Möchten Sie die Änderungen jetzt speichern und dann sortieren?',
+      'Ungespeicherte Änderungen',
+      MB_YESNOCANCEL + MB_ICONQUESTION) of
+
+      IDYES: begin
+        jachLog.LogInfo('Benutzer wählte: Änderungen speichern und sortieren');
+        RebuildFCampaignFromSquads;
+        FSquadsDirty := False;
+        jachLog.LogDebug('Ungespeicherte Änderungen in campaign.scn übernommen');
+      end;
+
+      IDNO: begin
+        jachLog.LogInfo('Benutzer wählte: Änderungen verwerfen und sortieren');
+        LoadSquadsFromSave;
+        FSquadsDirty := False;
+        jachLog.LogDebug('Cache von campaign.scn neu geladen, Änderungen verworfen');
+      end;
+
+      IDCANCEL: begin
+        jachLog.LogInfo('Benutzer wählte: Sortierung abbrechen');
+        Exit;
+      end;
+    end;
   end;
 
   SetUILoadingState(True);
-  ShowProgress('Sortiere Squads...', Length(FSquads));
+  ShowProgress('Sortiere Squads...');
 
   try
-    // 1. Schritt: Sortier-Informationen sammeln
-    SetLength(SortInfos, Length(FSquads));
+    // Direkte Sortierung in campaign.scn
+    FSave.SortSquadLines(Criteria, Direction);
 
-    for I := 0 to Length(FSquads) - 1 do
-    begin
-      UpdateProgress(I, Format('Analysiere Squad %d/%d',
-        [I + 1, Length(FSquads)]));
-
-      SortInfos[I].Index := I;
-      SortInfos[I].Name := FSquads[I].Name;
-      SortInfos[I].SquadData := FSquads[I];
-      SortInfos[I].UnitCount := Length(FSquads[I].UnitIds);
-
-      // Detailanalyse der Units
-      AnalyzeSquadForSorting(I, SortInfos[I]);
-    end;
-
-    // 2. Schritt: Sortieren
-    UpdateProgress(Length(FSquads), 'Sortiere Squads...');
-    jachLog.LogDebug('Führe Sortierung durch');
-
-    SortSquadInfos(SortInfos, Criteria, Direction);
-
-    // 3. Schritt: Neue Squad-Reihenfolge anwenden
-    SetLength(NewSquads, Length(FSquads));
-    for I := 0 to Length(SortInfos) - 1 do
-    begin
-      NewSquads[I] := SortInfos[I].SquadData;
-      jachLog.LogDebug('Position %d: Squad "%s" (war Index %d)',
-        [I, SortInfos[I].Name, SortInfos[I].Index]);
-    end;
-
-    // 4. Schritt: FSquads ersetzen und campaign.scn aktualisieren
-    FSquads := NewSquads;
-    UpdateCampaignScnFromSquads;
-
-    // 5. Schritt: UI aktualisieren
+    // Cache und UI komplett neu laden
+    LoadSquadsFromSave;
     UpdateTreeViewsFromSquads;
     ClearInfoPanel;
 
     ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
-    jachLog.LogInfo('Squad-Sortierung erfolgreich abgeschlossen in %d ms',
-      [ElapsedMs]);
-    ShowStatus(Format('Squads sortiert nach %s',
-      [GetSortCriteriaDisplayName(Criteria)]));
+    jachLog.LogInfo('Squad-Sortierung erfolgreich abgeschlossen in %d ms', [ElapsedMs]);
+    ShowStatus(Format('Squads sortiert nach %s', [GetSortCriteriaDisplayName(Criteria)]));
 
   except
     on E: Exception do
@@ -1999,163 +1974,7 @@ begin
   HideProgress;
 end;
 
-procedure TFrmMain.AnalyzeSquadForSorting(SquadIndex: Integer;
-var SortInfo: TSquadSortInfo);
-var
-  I: Integer;
-  UnitId: string;
-  UnitInfo: TUnitInfo;
-  UnitDetails: TUnitDetails;
-  TotalVet, ValidVetCount: Integer;
-begin
-  SortInfo.HumanCount := 0;
-  SortInfo.EntityCount := 0;
-  SortInfo.MaxVet := 0;
-  TotalVet := 0;
-  ValidVetCount := 0;
 
-  for I := 0 to Length(FSquads[SquadIndex].UnitIds) - 1 do
-  begin
-    UnitId := FSquads[SquadIndex].UnitIds[I];
-
-    if IsEmptySlot(UnitId) then
-      Continue;
-
-    try
-      UnitInfo := FSave.GetUnitInfo(UnitId);
-
-      if SameText(UnitInfo.Kind, 'Human') then
-      begin
-        Inc(SortInfo.HumanCount);
-
-        // Veteranenstufe nur für Menschen relevant
-        try
-          UnitDetails := FSave.GetUnitDetails(UnitId);
-          if UnitDetails.Veterancy > SortInfo.MaxVet then
-            SortInfo.MaxVet := UnitDetails.Veterancy;
-          TotalVet := TotalVet + UnitDetails.Veterancy;
-          Inc(ValidVetCount);
-        except
-          on E: Exception do
-            jachLog.LogWarning('Veterancy-Fehler für Unit %s: %s',
-              [UnitId, E.Message]);
-        end;
-      end
-      else if SameText(UnitInfo.Kind, 'Entity') then
-        Inc(SortInfo.EntityCount);
-
-    except
-      on E: Exception do
-        jachLog.LogWarning('Unit-Info-Fehler für %s: %s', [UnitId, E.Message]);
-    end;
-  end;
-
-  // Durchschnittliche Veteranenstufe berechnen
-  if ValidVetCount > 0 then
-    SortInfo.AverageVet := TotalVet / ValidVetCount
-  else
-    SortInfo.AverageVet := 0;
-
-  SortInfo.TotalVet := TotalVet;
-end;
-
-procedure TFrmMain.SortSquadInfos(var SortInfos: TArray<TSquadSortInfo>;
-Criteria: TSquadSortCriteria; Direction: TSquadSortDirection);
-begin
-  // Bubble Sort - einfach aber für die meisten Squad-Mengen ausreichend
-  // Für bessere Performance bei vielen Squads könnte QuickSort verwendet werden
-
-  TArray.Sort<TSquadSortInfo>(SortInfos, TComparer<TSquadSortInfo>.Construct(
-    function(const A, B: TSquadSortInfo): Integer
-    begin
-      case Criteria of
-        scName:
-          Result := CompareText(A.Name, B.Name);
-        scUnitCount:
-          Result := CompareValue(A.UnitCount, B.UnitCount);
-        scAverageVet:
-          Result := CompareValue(A.AverageVet, B.AverageVet);
-        scMaxVet:
-          Result := CompareValue(A.MaxVet, B.MaxVet);
-        scHumanCount:
-          Result := CompareValue(A.HumanCount, B.HumanCount);
-        scEntityCount:
-          Result := CompareValue(A.EntityCount, B.EntityCount);
-      else
-        Result := 0;
-      end;
-
-      if Direction = sdDescending then
-        Result := -Result;
-    end));
-end;
-
-procedure TFrmMain.UpdateCampaignScnFromSquads;
-var
-  I: Integer;
-  OriginalSquadLines: TArray<string>;
-  SortedSquadLines: TArray<string>;
-  SquadIndices: TArray<Integer>;
-  SquadNames: TArray<string>;
-  FoundIndex: Integer;
-begin
-  jachLog.LogInfo('Aktualisiere campaign.scn mit neuer Squad-Reihenfolge');
-
-  // 1. Alle ursprünglichen Squad-Zeilen sammeln
-  SquadNames := FSave.GetSquadNames;
-  SetLength(OriginalSquadLines, Length(SquadNames));
-
-  for I := 0 to Length(SquadNames) - 1 do
-  begin
-    OriginalSquadLines[I] := FSave.GetSquadLine(I);
-    jachLog.LogDebug('Original Squad %d: "%s"', [I, SquadNames[I]]);
-  end;
-
-  // 2. Squad-Zeilen in neuer Reihenfolge anordnen (entsprechend FSquads)
-  SetLength(SortedSquadLines, Length(FSquads));
-
-  for I := 0 to Length(FSquads) - 1 do
-  begin
-    // Finde die ursprüngliche Squad-Zeile für diesen Squad-Namen
-    FoundIndex := -1;
-    for var J := 0 to Length(SquadNames) - 1 do
-    begin
-      if SameText(SquadNames[J], FSquads[I].Name) then
-      begin
-        FoundIndex := J;
-        Break;
-      end;
-    end;
-
-    if FoundIndex >= 0 then
-    begin
-      // Verwende die ursprüngliche Zeile, aber mit aktualisierten Unit-IDs
-      SortedSquadLines[I] := FSave.ReplaceUnitIdsInSquadLine(
-        OriginalSquadLines[FoundIndex],
-        FSquads[I].UnitIds);
-
-      jachLog.LogDebug('Position %d: Squad "%s" (ursprünglich Index %d)',
-        [I, FSquads[I].Name, FoundIndex]);
-    end
-    else
-    begin
-      jachLog.LogError('Squad "%s" nicht in ursprünglichen Squad-Namen gefunden!',
-        [FSquads[I].Name]);
-      // Fallback: leere Zeile
-      SortedSquadLines[I] := '';
-    end;
-  end;
-
-  // 3. Alle Squad-Zeilen in der campaign.scn durch die sortierte Reihenfolge ersetzen
-  for I := 0 to Length(SortedSquadLines) - 1 do
-  begin
-    FSave.SetSquadLine(I, SortedSquadLines[I]);
-    jachLog.LogDebug('Squad-Zeile %d in campaign.scn aktualisiert', [I]);
-  end;
-
-  jachLog.LogInfo('Campaign.scn erfolgreich mit %d Squads in neuer Reihenfolge aktualisiert',
-    [Length(SortedSquadLines)]);
-end;
 
 function TFrmMain.GetSortCriteriaDisplayName
   (Criteria: TSquadSortCriteria): string;

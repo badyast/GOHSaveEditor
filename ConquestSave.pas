@@ -10,7 +10,8 @@ uses
   System.RegularExpressions,
   System.Zip,
   System.IOUtils,
-  System.Generics.Collections;
+  System.Generics.Collections,
+  System.Generics.Defaults;
 
 type
   EConquestSave = class(Exception);
@@ -46,6 +47,19 @@ type
     Inventory: TArray<TInventoryItem>;
   end;
 
+    // NEU: Squad-Sortierung Types
+  TSquadSortCriteria = (
+    scName,           // Nach Name
+    scUnitCount,      // Nach Anzahl Units
+    scAverageVet,     // Nach durchschnittlicher Veteranenstufe
+    scMaxVet,         // Nach höchster Veteranenstufe
+    scHumanCount,     // Nach Anzahl menschlicher Einheiten
+    scEntityCount     // Nach Anzahl Entity-Einheiten
+  );
+
+  TSquadSortDirection = (sdAscending, sdDescending);
+
+
   TConquestSave = class
   private
     FSaveFile: string; // Path to the original .sav file
@@ -68,6 +82,7 @@ type
 
     // Unit detail parsing
     function ParseInventory(const UnitId: string): TArray<TInventoryItem>;
+
   public
     constructor Create;
     destructor Destroy; override;
@@ -75,6 +90,8 @@ type
     procedure SetSquadLine(Index: Integer; const NewLine: string);
     function ReplaceUnitIdsInSquadLine(const Line: string;
       const NewUnitIds: TArray<string>): string;
+    procedure SortSquadLines(Criteria: TSquadSortCriteria;
+      Direction: TSquadSortDirection);
 
     // Loading & saving
     procedure LoadFromSave(const ASaveFile: string);
@@ -860,6 +877,73 @@ begin
       FTempExtractDir := '';
     end;
   end;
+end;
+
+procedure TConquestSave.SortSquadLines(Criteria: TSquadSortCriteria;
+  Direction: TSquadSortDirection);
+var
+  StartIdx: Integer;
+  SquadIndices: TArray<Integer>;
+  SquadLines: TArray<string>;
+  SortedLines: TArray<string>;
+  I: Integer;
+begin
+  jachLog.LogInfo('Sortiere Squad-Zeilen direkt in campaign.scn');
+
+  // CampaignSquads Block finden
+  StartIdx := FindCampaignSquadsStart;
+  if StartIdx < 0 then
+    raise EConquestSave.Create('CampaignSquads block not found.');
+
+  // Squad-Zeilen sammeln
+  SquadIndices := SquadLineIndices;
+  SetLength(SquadLines, Length(SquadIndices));
+
+  for I := 0 to Length(SquadIndices) - 1 do
+    SquadLines[I] := FCampaign[SquadIndices[I]];
+
+  // Sortieren (einfache String-Sortierung nach Squad-Namen)
+  SortedLines := Copy(SquadLines);
+
+  TArray.Sort<string>(SortedLines, TComparer<string>.Construct(
+    function(const A, B: string): Integer
+    var
+      NameA, NameB: string;
+      M: TMatch;
+    begin
+      // Squad-Namen aus den Zeilen extrahieren
+      M := TRegEx.Match(A, '"([^"]+)"');
+      if M.Success then
+        NameA := M.Groups[1].Value
+      else
+        NameA := A;
+
+      M := TRegEx.Match(B, '"([^"]+)"');
+      if M.Success then
+        NameB := M.Groups[1].Value
+      else
+        NameB := B;
+
+      case Criteria of
+        scName:
+          Result := CompareText(NameA, NameB);
+        // Weitere Kriterien können später hinzugefügt werden
+      else
+        Result := CompareText(NameA, NameB);
+      end;
+
+      if Direction = sdDescending then
+        Result := -Result;
+    end));
+
+  // Sortierte Zeilen zurück in FCampaign schreiben
+  for I := 0 to Length(SquadIndices) - 1 do
+  begin
+    FCampaign[SquadIndices[I]] := SortedLines[I];
+    jachLog.LogDebug('Squad-Zeile %d sortiert', [I]);
+  end;
+
+  jachLog.LogInfo('Squad-Zeilen erfolgreich sortiert');
 end;
 
 end.
