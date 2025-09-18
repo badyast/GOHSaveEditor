@@ -214,7 +214,7 @@ begin
     end;
   end;
   // Squad-Sortierung Menü hinzufügen
-  //AddSortMenuItems;
+  AddSortMenuItems;
 end;
 
 // ← NEU: Fortschritts-Methoden
