@@ -29,6 +29,7 @@ type
 
   TSquadData = record
     Name: string;
+    Stage: string;
     UnitIds: TArray<string>;
     UnitNames: TArray<string>; // ← NEU: Gecachte Namen
     UnitVeterancies: TArray<Integer>; // ← NEU: Gecachte Veteranenstufen
@@ -36,19 +37,6 @@ type
     MaxVeterancy: Integer;
   end;
 
-//  TSquadSortInfo = record
-//    Index: Integer;
-//    Name: string;
-//    UnitCount: Integer;
-//    HumanCount: Integer;
-//    EntityCount: Integer;
-//    AverageVet: Double;
-//    MaxVet: Integer;
-//    TotalVet: Integer;
-//    SquadData: TSquadData; // Ihre bestehende TSquadData Struktur
-//  end;
-//
-//  // Kompakte Event-Handler-Lösung für Sortierung
 type
   TSortMenuInfo = record
     Criteria: TSquadSortCriteria;
@@ -146,14 +134,12 @@ type
     procedure UncheckMenu(AMenuItem: TMenuItem);
     procedure SortMenuItemClick(Sender: TObject);
     procedure AddSortMenuItems;
-        function GetSortCriteriaDisplayName(Criteria: TSquadSortCriteria): string;
-
-
-
+    function GetSortCriteriaDisplayName(Criteria: TSquadSortCriteria): string;
+    function GetStageGroupDisplay(const Stage: string): string;
 
   public
 
-  procedure SortSquads(Criteria: TSquadSortCriteria;
+    procedure SortSquads(Criteria: TSquadSortCriteria;
       Direction: TSquadSortDirection);
   end;
 
@@ -359,6 +345,8 @@ procedure TFrmMain.LoadSquadsFromSave;
 var
   I, J: Integer;
   SquadNames: TArray<string>;
+  SquadStages: TArray<string>;
+  SquadCount: Integer;
   UnitInfo: TUnitInfo;
   UnitDetails: TUnitDetails;
   MaxVet: Integer;
@@ -379,8 +367,8 @@ begin
 
   try
     jachLog.LogDebug('Lade Squad-Namen aus Savegame');
-    SquadNames := FSave.GetSquadNames;
-    SetLength(FSquads, Length(SquadNames));
+SquadCount := FSave.GetSquadNamesAndStages(SquadNames, SquadStages);
+SetLength(FSquads, SquadCount);
 
     jachLog.LogInfo('Gefunden: %d Squads zur Verarbeitung',
       [Length(SquadNames)]);
@@ -409,6 +397,7 @@ begin
       jachLog.LogDebug('Verarbeite Squad "%s" (Index %d)', [SquadNames[I], I]);
 
       FSquads[I].Name := SquadNames[I];
+      FSquads[I].Stage := SquadStages[I];
       FSquads[I].UnitIds := FSave.GetSquadMembers(I);
 
       jachLog.LogDebug('Squad "%s" hat %d Units',
@@ -1020,6 +1009,7 @@ var
   UnitCaption, SquadCaption: string;
   IsEntity, IsEmpty: Boolean;
   SquadVeterancyText, UnitVeterancyText: string;
+  StageDisplay: string;
 begin
   ClearTreeData(TreeBase);
   ClearTreeData(TreeTarget);
@@ -1032,10 +1022,13 @@ begin
     Info.SquadIndex := I;
     Info.UnitId := '';
 
-    SquadCaption := FSquads[I].Name;
-    SquadVeterancyText := GetVeterancyDisplay(FSquads[I].MaxVeterancy);
-    SquadCaption := SquadCaption + SquadVeterancyText;
+SquadCaption := FSquads[I].Name;
 
+StageDisplay := GetStageGroupDisplay(FSquads[I].Stage);
+SquadCaption := SquadCaption + StageDisplay;
+
+SquadVeterancyText := GetVeterancyDisplay(FSquads[I].MaxVeterancy);
+SquadCaption := SquadCaption + SquadVeterancyText;
     SquadNode := TreeBase.Items.AddObject(nil, SquadCaption, Info);
 
     // Unit-Knoten erstellen
@@ -1902,7 +1895,8 @@ begin
   end;
 end;
 
-procedure TFrmMain.SortSquads(Criteria: TSquadSortCriteria; Direction: TSquadSortDirection);
+procedure TFrmMain.SortSquads(Criteria: TSquadSortCriteria;
+Direction: TSquadSortDirection);
 var
   StartTime: TDateTime;
   ElapsedMs: Integer;
@@ -1911,36 +1905,42 @@ begin
   jachLog.LogInfo('=== Squad-Sortierung gestartet ===');
   jachLog.LogInfo('Kriterium: %s, Richtung: %s',
     [GetEnumName(TypeInfo(TSquadSortCriteria), Ord(Criteria)),
-     GetEnumName(TypeInfo(TSquadSortDirection), Ord(Direction))]);
+    GetEnumName(TypeInfo(TSquadSortDirection), Ord(Direction))]);
 
   // Prüfung auf ungespeicherte Änderungen
   if FSquadsDirty then
   begin
-    case Application.MessageBox(
-      'Sie haben ungespeicherte Änderungen an den Squad-Zusammenstellungen. ' +
+    case Application.MessageBox
+      ('Sie haben ungespeicherte Änderungen an den Squad-Zusammenstellungen. ' +
       'Diese müssen vor der Sortierung gespeichert werden.'#13#13 +
       'Möchten Sie die Änderungen jetzt speichern und dann sortieren?',
-      'Ungespeicherte Änderungen',
-      MB_YESNOCANCEL + MB_ICONQUESTION) of
+      'Ungespeicherte Änderungen', MB_YESNOCANCEL + MB_ICONQUESTION) of
 
-      IDYES: begin
-        jachLog.LogInfo('Benutzer wählte: Änderungen speichern und sortieren');
-        RebuildFCampaignFromSquads;
-        FSquadsDirty := False;
-        jachLog.LogDebug('Ungespeicherte Änderungen in campaign.scn übernommen');
-      end;
+      IDYES:
+        begin
+          jachLog.LogInfo
+            ('Benutzer wählte: Änderungen speichern und sortieren');
+          RebuildFCampaignFromSquads;
+          FSquadsDirty := False;
+          jachLog.LogDebug
+            ('Ungespeicherte Änderungen in campaign.scn übernommen');
+        end;
 
-      IDNO: begin
-        jachLog.LogInfo('Benutzer wählte: Änderungen verwerfen und sortieren');
-        LoadSquadsFromSave;
-        FSquadsDirty := False;
-        jachLog.LogDebug('Cache von campaign.scn neu geladen, Änderungen verworfen');
-      end;
+      IDNO:
+        begin
+          jachLog.LogInfo
+            ('Benutzer wählte: Änderungen verwerfen und sortieren');
+          LoadSquadsFromSave;
+          FSquadsDirty := False;
+          jachLog.LogDebug
+            ('Cache von campaign.scn neu geladen, Änderungen verworfen');
+        end;
 
-      IDCANCEL: begin
-        jachLog.LogInfo('Benutzer wählte: Sortierung abbrechen');
-        Exit;
-      end;
+      IDCANCEL:
+        begin
+          jachLog.LogInfo('Benutzer wählte: Sortierung abbrechen');
+          Exit;
+        end;
     end;
   end;
 
@@ -1957,8 +1957,10 @@ begin
     ClearInfoPanel;
 
     ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
-    jachLog.LogInfo('Squad-Sortierung erfolgreich abgeschlossen in %d ms', [ElapsedMs]);
-    ShowStatus(Format('Squads sortiert nach %s', [GetSortCriteriaDisplayName(Criteria)]));
+    jachLog.LogInfo('Squad-Sortierung erfolgreich abgeschlossen in %d ms',
+      [ElapsedMs]);
+    ShowStatus(Format('Squads sortiert nach %s',
+      [GetSortCriteriaDisplayName(Criteria)]));
 
   except
     on E: Exception do
@@ -1973,8 +1975,6 @@ begin
   SetUILoadingState(False);
   HideProgress;
 end;
-
-
 
 function TFrmMain.GetSortCriteriaDisplayName
   (Criteria: TSquadSortCriteria): string;
@@ -2017,20 +2017,25 @@ end;
 
 procedure TFrmMain.AddSortMenuItems;
 const
-  SORT_MENU_INFOS: array[0..11] of TSortMenuInfo = (
-    (Criteria: scName; Direction: sdAscending; Caption: 'Nach Name (A-Z)'),
-    (Criteria: scName; Direction: sdDescending; Caption: 'Nach Name (Z-A)'),
-    (Criteria: scUnitCount; Direction: sdAscending; Caption: 'Nach Unit-Anzahl (aufsteigend)'),
-    (Criteria: scUnitCount; Direction: sdDescending; Caption: 'Nach Unit-Anzahl (absteigend)'),
-    (Criteria: scAverageVet; Direction: sdAscending; Caption: 'Nach durchschn. Veteranenstufe (aufsteigend)'),
-    (Criteria: scAverageVet; Direction: sdDescending; Caption: 'Nach durchschn. Veteranenstufe (absteigend)'),
-    (Criteria: scMaxVet; Direction: sdAscending; Caption: 'Nach max. Veteranenstufe (aufsteigend)'),
-    (Criteria: scMaxVet; Direction: sdDescending; Caption: 'Nach max. Veteranenstufe (absteigend)'),
-    (Criteria: scHumanCount; Direction: sdAscending; Caption: 'Nach Anzahl Menschen (aufsteigend)'),
-    (Criteria: scHumanCount; Direction: sdDescending; Caption: 'Nach Anzahl Menschen (absteigend)'),
-    (Criteria: scEntityCount; Direction: sdAscending; Caption: 'Nach Anzahl Entities (aufsteigend)'),
-    (Criteria: scEntityCount; Direction: sdDescending; Caption: 'Nach Anzahl Entities (absteigend)')
-  );
+  SORT_MENU_INFOS: array [0 .. 11] of TSortMenuInfo = ((Criteria: scName;
+    Direction: sdAscending; Caption: 'Nach Name (A-Z)'), (Criteria: scName;
+    Direction: sdDescending; Caption: 'Nach Name (Z-A)'),
+    (Criteria: scUnitCount; Direction: sdAscending;
+    Caption: 'Nach Unit-Anzahl (aufsteigend)'), (Criteria: scUnitCount;
+    Direction: sdDescending; Caption: 'Nach Unit-Anzahl (absteigend)'),
+    (Criteria: scAverageVet; Direction: sdAscending;
+    Caption: 'Nach durchschn. Veteranenstufe (aufsteigend)'),
+    (Criteria: scAverageVet; Direction: sdDescending;
+    Caption: 'Nach durchschn. Veteranenstufe (absteigend)'),
+    (Criteria: scMaxVet; Direction: sdAscending;
+    Caption: 'Nach max. Veteranenstufe (aufsteigend)'), (Criteria: scMaxVet;
+    Direction: sdDescending; Caption: 'Nach max. Veteranenstufe (absteigend)'),
+    (Criteria: scHumanCount; Direction: sdAscending;
+    Caption: 'Nach Anzahl Menschen (aufsteigend)'), (Criteria: scHumanCount;
+    Direction: sdDescending; Caption: 'Nach Anzahl Menschen (absteigend)'),
+    (Criteria: scEntityCount; Direction: sdAscending;
+    Caption: 'Nach Anzahl Entities (aufsteigend)'), (Criteria: scEntityCount;
+    Direction: sdDescending; Caption: 'Nach Anzahl Entities (absteigend)'));
 
   function NeedsSeparatorAfter(Index: Integer): Boolean;
   begin
@@ -2069,6 +2074,14 @@ begin
   end;
 
   MainMenu1.Items.Add(SortMenu);
+end;
+
+function TFrmMain.GetStageGroupDisplay(const Stage: string): string;
+begin
+  if Stage = '' then
+    Result := ' [Ungroupiert]'
+  else
+    Result := ' [' + Stage + ']';
 end;
 
 end.

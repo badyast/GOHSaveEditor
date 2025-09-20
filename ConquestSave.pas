@@ -47,18 +47,16 @@ type
     Inventory: TArray<TInventoryItem>;
   end;
 
-    // NEU: Squad-Sortierung Types
-  TSquadSortCriteria = (
-    scName,           // Nach Name
-    scUnitCount,      // Nach Anzahl Units
-    scAverageVet,     // Nach durchschnittlicher Veteranenstufe
-    scMaxVet,         // Nach höchster Veteranenstufe
-    scHumanCount,     // Nach Anzahl menschlicher Einheiten
-    scEntityCount     // Nach Anzahl Entity-Einheiten
-  );
+  // NEU: Squad-Sortierung Types
+  TSquadSortCriteria = (scName, // Nach Name
+    scUnitCount, // Nach Anzahl Units
+    scAverageVet, // Nach durchschnittlicher Veteranenstufe
+    scMaxVet, // Nach höchster Veteranenstufe
+    scHumanCount, // Nach Anzahl menschlicher Einheiten
+    scEntityCount // Nach Anzahl Entity-Einheiten
+    );
 
   TSquadSortDirection = (sdAscending, sdDescending);
-
 
   TConquestSave = class
   private
@@ -119,6 +117,11 @@ type
 
     // Cleanup
     procedure CleanupTempDirectory;
+
+    // Stage integration
+    function GetSquadNamesAndStages(out Names: TArray<string>;
+      out Stages: TArray<string>): Integer;
+    function GetSquadStage(SquadIndex: Integer): string;
   end;
 
 implementation
@@ -944,6 +947,45 @@ begin
   end;
 
   jachLog.LogInfo('Squad-Zeilen erfolgreich sortiert');
+end;
+
+function TConquestSave.GetSquadNamesAndStages(out Names: TArray<string>;
+  out Stages: TArray<string>): Integer;
+var
+  IdxArr: TArray<Integer>;
+  I: Integer;
+  M: TMatch;
+  Line: string;
+begin
+  IdxArr := SquadLineIndices;
+  SetLength(Names, Length(IdxArr));
+  SetLength(Stages, Length(IdxArr));
+
+  for I := 0 to Length(IdxArr) - 1 do
+  begin
+    Line := FCampaign[IdxArr[I]];
+    M := TRegEx.Match(Line, '"(.*?)"\s+"(.*?)"');
+    if not M.Success then
+      raise EConquestSave.Create('Unexpected squad line format: ' + Line);
+
+    Names[I] := M.Groups[1].Value;   // Squad-Name
+    Stages[I] := M.Groups[2].Value;  // Stage
+  end;
+
+  Result := Length(Names);
+end;
+
+function TConquestSave.GetSquadStage(SquadIndex: Integer): string;
+var
+  Line: string;
+  M: TMatch;
+begin
+  Line := GetSquadLine(SquadIndex);
+  M := TRegEx.Match(Line, '"[^"]*"\s+"([^"]*)"');
+  if M.Success then
+    Result := M.Groups[1].Value
+  else
+    Result := '';
 end;
 
 end.
