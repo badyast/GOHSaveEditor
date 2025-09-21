@@ -2079,7 +2079,7 @@ end;
 function TFrmMain.GetStageGroupDisplay(const Stage: string): string;
 begin
   if Stage = '' then
-    Result := ' [Ungroupiert]'
+    Result := ' [Keine Gruppe]'
   else
     Result := ' [' + Stage + ']';
 end;
