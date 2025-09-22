@@ -1,0 +1,294 @@
+{saveinfo
+	{version 9}
+	{gameVersion "1.054.0"}
+	{timestamp 1758527238}
+	{mp 61561.3}
+	{sp 6.75}
+	{ap 5035.6}
+	{rp 0}
+	{seed 3043280074}
+	{name kfin}
+	{army fin}
+	{enemyArmy rus}
+	{difficulty normal}
+	{duration 1}
+	{resources 3}
+	{fogofwar fog_realistic}
+	{manualControlMode 3}
+	{selectedMapPoint point_4_4}
+	{attacking}
+	{region talvisota}
+	{playedGames 44}
+	{wonGames 42}
+	{unlockedResearch {"ba6_fin"}
+		{"squad_civil_guard_early_con(fin)"}
+		{"squad_fortress_rifle_early_con(fin)"}
+		{"squad_rifle_early_con(fin)"}
+		{"squad_rifle_lmg_early_con(fin)"}
+		{"t26e"}
+		{"vickers_6t_altb"}
+		{"defense_level_1"}
+		{"reinforcement_stage_2"}
+		{"team_officer_con(fin)"}
+		{"single_ap_miner(fin)"}
+		{"single_at_miner(fin)"}
+		{"single_engineer(fin)"}
+		{"reinforcement_stage_3"}
+		{"conquest_blenheim_light"}
+		{"20mm_itk35"}
+		{"20mm_itk40"}
+		{"ford_3ton_breda"}
+		{"ford_v3000"}
+		{"volvo_127d"}
+		{"defense_level_2"}
+		{"t26_33_fin"}
+		{"t26_33_fin_mid"}
+		{"reinforcement_stage_4"}
+		{"squad_officer_con(fin)"}
+		{"120mm_krh40_mortar_barrage"}
+		{"reinforcement_stage_5"}
+		{"ba10_fin"}
+		{"bt42"}
+		{"bt5_fin"}
+		{"ford_v3000_ammo"}
+		{"single_flamer(fin)"}
+		{"squad_scout_mid_con(fin)"}
+		{"single_sniper(fin)"}
+		{"squad_vet_scout_mid_con(fin)"}
+		{"stug3g_fin_early"}
+		{"defense_level_3"}
+		{"bt5_fin_mid"}
+		{"t26c"}
+		{"t26e_mid"}
+		{"stug3g_fin"}
+		{"t50_fin"}
+		{"t28_38_fin"}
+		{"t28e_fin"}
+		{"t28e_fin_late"}
+		{"t3476_41_fin"}
+		{"t3476_41_fin_late"}
+		{"t3485_44_fin"}
+		{"kv1_40e_fin"}
+		{"20mm_l39"}
+		{"kv1_40e_fin_late"}
+		{"kv1_42_fin"}
+		{"kv1_42_fin_late"}
+		{"isu152_fin"}
+		{"squad_assault_mid_con(fin)"}
+		{"squad_rifle_mid_con(fin)"}
+		{"squad_vet_rifle_mid_con(fin)"}
+		{"single_at_pzs_late_con(fin)"}
+		{"squad_at_late_con(fin)"}
+		{"squad_hq_lr_jag_mid_con(fin)"}
+		{"squad_hq_lr_late_con(fin)"}
+		{"squad_hq_lr_mid_con(fin)"}
+		{"squad_hq_lr_pio_late_con(fin)"}
+		{"squad_hq_lr_pio_mid_con(fin)"}
+		{"squad_light_scout_mid_con(fin)"}
+		{"white_death_con(fin)"}
+		{"ford_v3000_eng"}
+		{"squad_eng_flame_con(fin)"}
+		{"squad_engineer_mid_con(fin)"}
+		{"squad_heavy_engineer_mid_con(fin)"}
+		{"panzernest_krab"}
+		{"squad_hq_lr_jag_late_con(fin)"}
+		{"squad_elite_rifle_mid_con(fin)"}
+		{"squad_hq_lr_recon_late_con(fin)"}
+		{"squad_hq_lr_recon_mid_con(fin)"}
+		{"squad_marksmen_mid_con(fin)"}
+		{"squad_penal_mid_con(fin)"}
+		{"ds39_stand_fin"}
+		{"maxim_m1910_30"}
+		{"maxim_m32_33"}
+		{"mg08_fin"}
+		{"squad_jag_mid_con(fin)"}
+		{"conquest_blenheim_recon"}
+		{"squad_jag_strike_mid_con(fin)"}
+		{"squad_vet_jag_mid_con(fin)"}
+		{"squad_cav_mid_con(fin)"}
+		{"squad_hrr_cav_mid_con(fin)"}
+		{"squad_vet_cav_mid_con(fin)"}
+		{"squad_border_guard_early_con(fin)"}
+		{"squad_swe_recon_early_con(fin)"}
+		{"squad_swe_rifle_early_con(fin)"}
+		{"squad_border_jag_mid_con(fin)"}
+		{"squad_rifle_late_dp_con(fin)"}
+		{"40mm_itk38b"}
+		{"50mm_krh38"}
+		{"81mm_krh36"}
+		{"volvo_127d_itk40"}
+		{"l62"}
+		{"ba10_fin_mid"}
+		{"ba10m_fin"}
+		{"squad_cav_late_con(fin)"}
+		{"squad_urr_cav_mid_con(fin)"}
+		{"squad_vet_cav_late_con(fin)"}
+		{"squad_elite_rifle_late_con(fin)"}
+		{"squad_vet_rifle_late_con(fin)"}
+		{"squad_rifle_late_dt_con(fin)"}
+		{"squad_jag_late_con(fin)"}
+		{"squad_jag_at_late_con(fin)"}
+		{"squad_arm_jag_late_mot_con(fin)"}
+		{"squad_arm_pio_late_mot_con(fin)"}
+		{"squad_vet_jag_late_con(fin)"}
+		{"squad_jag_strike_late_con(fin)"}
+		{"squad_antitank_late_con(fin)"}
+		{"squad_hrr_cav_late_con(fin)"}
+		{"squad_border_jag_at_late_con(fin)"}
+		{"squad_border_jag_late_con(fin)"}
+		{"squad_urr_cav_late_con(fin)"}
+		{"45mm_pstk32"}
+		{"120mm_krh40"}
+		{"170mm_minewerfer"}
+		{"45mm_pstk32_mid"}
+		{"47mm_pstk39"}
+		{"kht130_fin"}
+		{"122mm_m1910_fin_artillery_barrage"}
+		{"155mm_h17_artillery_barrage"}
+		{"conquest_blenheim"}
+		{"122mm_m1910_fin_smoke_barrage"}
+		{"81mm_krh36_mortar_barrage"}
+		{"squad_jag_scout_late_con(fin)"}
+		{"squad_swe_mid_con(fin)"}
+		{"l182"}
+		{"t20_fin"}
+		{"t37a_fin"}
+		{"300mm_krh42"}
+		{"panzer4j_fin"}
+		{"75mm_itk37"}
+		{"76mm_itk31"}
+		{"squad_swe_late_con(fin)"}
+		{"105mm_h33"}
+		{"50mm_pstk38"}
+		{"75mm_k40"}
+		{"75mm_pstk9738"}
+		{"75mm_k44"}
+		{"76mm_k00"}
+		{"76mm_k02"}
+		{"76mm_k02_30_40"}
+		{"76mm_k36"}
+	}
+	{mapPoints {
+			{name hq_a}
+			{landscape wood}
+			{gamemode campaign_capture_the_flag}
+			{ownerTeam a}
+			{adjacentMaps {"point_1_1"}}
+			{risk ""}
+			{reward none}
+			{map "multi/dcg_vainikalan:campaign_capture_the_flag:4x4"}
+			{texmod camo}
+		}
+		{
+			{name point_1_1}
+			{landscape winter}
+			{gamemode campaign_capture_the_flag}
+			{ownerTeam a}
+			{adjacentMaps {"hq_a" "point_2_4" "point_2_3"}}
+			{risk ""}
+			{reward none}
+			{map "multi/dcg_rzhev:campaign_capture_the_flag:4x4"}
+			{texmod winter}
+		}
+		{
+			{name point_2_4}
+			{landscape desert}
+			{gamemode campaign_capture_the_flag}
+			{ownerTeam a}
+			{adjacentMaps {"point_1_1" "point_3_5"}}
+			{risk ""}
+			{reward none}
+			{map "multi/dcg_a_runway:campaign_capture_the_flag:4x4"}
+			{texmod camo}
+		}
+		{
+			{name point_2_3}
+			{landscape wood}
+			{gamemode campaign_capture_the_flag}
+			{ownerTeam a}
+			{adjacentMaps {"point_1_1" "point_3_3" "point_3_5" "point_3_2"}}
+			{risk ""}
+			{reward none}
+			{map "multi/dcg_f_lazurnyi:campaign_capture_the_flag:4x4"}
+			{texmod camo}
+		}
+		{
+			{name point_3_3}
+			{landscape wood}
+			{gamemode campaign_capture_the_flag}
+			{ownerTeam a}
+			{adjacentMaps {"point_2_3" "point_4_2" "point_4_4"}}
+			{risk ""}
+			{reward none}
+			{map "multi/dcg_radekhiv:campaign_capture_the_flag:4x4"}
+			{texmod camo}
+		}
+		{
+			{name point_3_5}
+			{landscape desert}
+			{gamemode campaign_capture_the_flag}
+			{ownerTeam a}
+			{adjacentMaps {"point_2_4" "point_2_3" "point_4_4"}}
+			{risk ""}
+			{reward none}
+			{map "multi/dcg_mikli_winter:campaign_capture_the_flag:4x4"}
+			{texmod winter}
+		}
+		{
+			{name point_3_2}
+			{landscape wood}
+			{gamemode campaign_capture_the_flag}
+			{ownerTeam a}
+			{adjacentMaps {"point_2_3" "point_4_2"}}
+			{risk ""}
+			{reward none}
+			{map "multi/dcg_radusha_airfield:campaign_capture_the_flag:4x4"}
+			{texmod winter}
+		}
+		{
+			{name point_4_2}
+			{landscape wood}
+			{gamemode campaign_capture_the_flag}
+			{ownerTeam a}
+			{adjacentMaps {"point_3_3" "point_3_2" "point_5_2"}}
+			{risk ""}
+			{reward none}
+			{map "multi/dcg_hilltop:campaign_capture_the_flag:4x4"}
+			{texmod camo}
+		}
+		{
+			{name point_4_4}
+			{landscape desert}
+			{gamemode campaign_capture_the_flag}
+			{ownerTeam b}
+			{adjacentMaps {"point_3_3" "point_3_5" "point_5_2"}}
+			{risk low}
+			{reward airfield}
+			{map "multi/dcg_vainikalan_winter:campaign_capture_the_flag:4x4"}
+			{texmod winter}
+		}
+		{
+			{name point_5_2}
+			{landscape wood}
+			{gamemode campaign_capture_the_flag}
+			{ownerTeam b}
+			{adjacentMaps {"point_4_2" "point_4_4" "hq_b"}}
+			{risk standard}
+			{reward factory}
+			{map "multi/dcg_niemen:campaign_capture_the_flag:4x4"}
+			{texmod camo}
+		}
+		{
+			{name hq_b}
+			{landscape wood}
+			{gamemode campaign_capture_the_flag}
+			{ownerTeam b}
+			{adjacentMaps {"point_5_2"}}
+			{risk ""}
+			{reward none}
+			{map "multi/dcg_f_bridges_of_lysovo:campaign_capture_the_flag:4x4"}
+			{texmod none}
+		}
+	}
+	{roundsHistory}
+}
