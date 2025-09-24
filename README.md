@@ -23,8 +23,7 @@ Die Nutzung geschieht auf eigene Verantwortung.
 
 ## 🛠️ Installation
 1. Lade dir die neueste Version unter [Releases](../../releases) herunter.  
-2. Entpacke die Dateien in einen beliebigen Ordner.  
-3. Starte `GOHSaveEditor.exe`.  
+2. Starte `GOHSaveEditor.exe`.  
 
 ---
 
