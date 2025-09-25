@@ -66,6 +66,7 @@ type
     FStatusPath: string; // <WorkDir>/status
     FTempExtractDir: string;
     FCampaign: TStringList;
+    FStatus: TStringList;
 
     function ReadAllText: string;
     function FindCampaignSquadsStart: Integer;
@@ -80,6 +81,12 @@ type
 
     // Unit detail parsing
     function ParseInventory(const UnitId: string): TArray<TInventoryItem>;
+
+    // Status-Datei Methoden
+    function ExtractCampaignNameFromPath(const SavePath: string): string;
+    procedure LoadStatusFile;
+    procedure UpdateCampaignNameInStatus(const NewCampaignName: string);
+    procedure SaveStatusFile;
 
   public
     constructor Create;
@@ -132,6 +139,7 @@ constructor TConquestSave.Create;
 begin
   inherited Create;
   FCampaign := TStringList.Create;
+  FStatus := TStringList.Create;
 end;
 
 destructor TConquestSave.Destroy;
@@ -148,6 +156,12 @@ begin
     jachLog.LogDebug('FCampaign freigegeben');
   end;
 
+  if Assigned(FStatus) then
+  begin
+    FStatus.Free;
+    jachLog.LogDebug('FStatus freigegeben');
+  end;
+
   inherited Destroy;
   jachLog.LogDebug('TConquestSave.Destroy abgeschlossen');
 end;
@@ -160,6 +174,7 @@ begin
   if not TFile.Exists(FCampaignPath) then
     raise EConquestSave.Create('campaign.scn not found in folder: ' + FWorkDir);
   FCampaign.LoadFromFile(FCampaignPath, TEncoding.UTF8);
+  LoadStatusFile;
 end;
 
 procedure TConquestSave.LoadFromSave(const ASaveFile: string);
@@ -294,6 +309,20 @@ begin
     finally
       Enc.Free;
     end;
+  end;
+
+  // Status-Datei aktualisieren falls Dateiname geändert
+  var
+    NewCampaignName: string;
+  NewCampaignName := ExtractCampaignNameFromPath(DestFile);
+  if Assigned(FStatus) and (ExtractCampaignNameFromPath(FSaveFile) <>
+    NewCampaignName) then
+  begin
+    jachLog.LogInfo
+      ('Dateiname geändert - aktualisiere Status-Datei von "%s" auf "%s"',
+      [ExtractCampaignNameFromPath(FSaveFile), NewCampaignName]);
+    UpdateCampaignNameInStatus(NewCampaignName);
+    SaveStatusFile;
   end;
 
   if TFile.Exists(DestFile) then
@@ -950,7 +979,7 @@ begin
 end;
 
 function TConquestSave.GetSquadNamesAndStages(out Names: TArray<string>;
-  out Stages: TArray<string>): Integer;
+out Stages: TArray<string>): Integer;
 var
   IdxArr: TArray<Integer>;
   I: Integer;
@@ -968,8 +997,8 @@ begin
     if not M.Success then
       raise EConquestSave.Create('Unexpected squad line format: ' + Line);
 
-    Names[I] := M.Groups[1].Value;   // Squad-Name
-    Stages[I] := M.Groups[2].Value;  // Stage
+    Names[I] := M.Groups[1].Value; // Squad-Name
+    Stages[I] := M.Groups[2].Value; // Stage
   end;
 
   Result := Length(Names);
@@ -986,6 +1015,55 @@ begin
     Result := M.Groups[1].Value
   else
     Result := '';
+end;
+
+function TConquestSave.ExtractCampaignNameFromPath(const SavePath: string): string;
+begin
+  Result := LowerCase(TPath.GetFileNameWithoutExtension(SavePath));
+end;
+
+procedure TConquestSave.LoadStatusFile;
+begin
+  if TFile.Exists(FStatusPath) then
+  begin
+    if not Assigned(FStatus) then
+      FStatus := TStringList.Create;
+    FStatus.LoadFromFile(FStatusPath, TEncoding.UTF8);
+    jachLog.LogDebug('Status-Datei geladen: %s', [FStatusPath]);
+  end;
+end;
+
+procedure TConquestSave.UpdateCampaignNameInStatus(const NewCampaignName: string);
+var
+  I: Integer;
+  Line: string;
+  M: TMatch;
+begin
+  if not Assigned(FStatus) then
+    Exit;
+
+  jachLog.LogInfo('Aktualisiere Kampagnenname in status auf: %s', [NewCampaignName]);
+
+  for I := 0 to FStatus.Count - 1 do
+  begin
+    Line := FStatus[I];
+    M := TRegEx.Match(Line, '(\s*\{name\s+)([^\}]*?)(\s*\})');
+    if M.Success then
+    begin
+      FStatus[I] := M.Groups[1].Value + NewCampaignName + M.Groups[3].Value;
+      jachLog.LogDebug('Kampagnenname aktualisiert in Zeile %d: %s', [I, FStatus[I]]);
+      Break;
+    end;
+  end;
+end;
+
+procedure TConquestSave.SaveStatusFile;
+begin
+  if Assigned(FStatus) and (FStatusPath <> '') then
+  begin
+    FStatus.SaveToFile(FStatusPath, TUTF8Encoding.Create(False));
+    jachLog.LogDebug('Status-Datei gespeichert: %s', [FStatusPath]);
+  end;
 end;
 
 end.

@@ -1,8 +1,8 @@
-﻿{ TODO 1 -oDaniel -cVital : Problem mit Statusdatei und Name des Spielstands lösen }
+﻿{ DONE: -oDaniel -cVital : Problem mit Statusdatei und Name des Spielstands lösen }
 { TODO -cFeature :
   Backup der Save-Dateien mit Zeitstempel
   Fokus on Unit Fixen
-  Möglichkeit Units neu zu sortieren und anzuordnen }
+  DONE: Möglichkeit Units neu zu sortieren und anzuordnen }
 { DONE: Temporäres Verzeichnis löschen }
 unit MainForm;
 
