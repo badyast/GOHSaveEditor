@@ -101,7 +101,6 @@ type
     // Loading & saving
     procedure LoadFromSave(const ASaveFile: string);
     procedure LoadFromFolder(const AFolder: string); // if already extracted
-    procedure SaveToSave; // repack into FSaveFile (Deflate)
     procedure SaveToSaveAs(const DestFile: string);
 
     // Queries
@@ -111,10 +110,6 @@ type
     function GetUnitDetails(const UnitId: string): TUnitDetails;
 
     // Edits
-    procedure MoveUnit(BaseSquadIndex: Integer; const UnitId: string;
-      TargetSquadIndex: Integer);
-    procedure ExchangeUnits(BaseSquadIndex: Integer; const BaseUnitId: string;
-      TargetSquadIndex: Integer; const TargetUnitId: string);
 
     // Paths
     property SaveFile: string read FSaveFile;
@@ -128,7 +123,6 @@ type
     // Stage integration
     function GetSquadNamesAndStages(out Names: TArray<string>;
       out Stages: TArray<string>): Integer;
-    function GetSquadStage(SquadIndex: Integer): string;
   end;
 
 implementation
@@ -798,47 +792,6 @@ begin
   end;
 end;
 
-procedure TConquestSave.MoveUnit(BaseSquadIndex: Integer; const UnitId: string;
-  TargetSquadIndex: Integer);
-var
-  BaseLine, TargetLine: string;
-begin
-  if BaseSquadIndex = TargetSquadIndex then
-    Exit; // nothing to do
-
-  BaseLine := GetSquadLine(BaseSquadIndex);
-  TargetLine := GetSquadLine(TargetSquadIndex);
-
-  BaseLine := RemoveUnitIdFromSquadLine(BaseLine, UnitId);
-  TargetLine := AppendUnitIdToSquadLine(TargetLine, UnitId);
-
-  SetSquadLine(BaseSquadIndex, BaseLine);
-  SetSquadLine(TargetSquadIndex, TargetLine);
-end;
-
-procedure TConquestSave.ExchangeUnits(BaseSquadIndex: Integer;
-  const BaseUnitId: string; TargetSquadIndex: Integer;
-  const TargetUnitId: string);
-var
-  BaseLine, TargetLine: string;
-begin
-  if (BaseSquadIndex = TargetSquadIndex) and (BaseUnitId = TargetUnitId) then
-    Exit;
-
-  BaseLine := GetSquadLine(BaseSquadIndex);
-  TargetLine := GetSquadLine(TargetSquadIndex);
-
-  // Remove & add accordingly
-  BaseLine := RemoveUnitIdFromSquadLine(BaseLine, BaseUnitId);
-  BaseLine := AppendUnitIdToSquadLine(BaseLine, TargetUnitId);
-
-  TargetLine := RemoveUnitIdFromSquadLine(TargetLine, TargetUnitId);
-  TargetLine := AppendUnitIdToSquadLine(TargetLine, BaseUnitId);
-
-  SetSquadLine(BaseSquadIndex, BaseLine);
-  SetSquadLine(TargetSquadIndex, TargetLine);
-end;
-
 procedure TConquestSave.CleanupTempDirectory;
 var
   StartTime: TDateTime;
@@ -1002,19 +955,6 @@ begin
   end;
 
   Result := Length(Names);
-end;
-
-function TConquestSave.GetSquadStage(SquadIndex: Integer): string;
-var
-  Line: string;
-  M: TMatch;
-begin
-  Line := GetSquadLine(SquadIndex);
-  M := TRegEx.Match(Line, '"[^"]*"\s+"([^"]*)"');
-  if M.Success then
-    Result := M.Groups[1].Value
-  else
-    Result := '';
 end;
 
 function TConquestSave.ExtractCampaignNameFromPath(const SavePath: string): string;

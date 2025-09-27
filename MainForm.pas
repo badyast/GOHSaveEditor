@@ -100,7 +100,6 @@ type
     procedure SetControlsEnabled(AEnabled: Boolean);
     procedure ClearTreeData(ATree: TTreeView);
     procedure PopulateTrees;
-    procedure PopulateTree(ATree: TTreeView);
     function SelectedUnitInfo(ATree: TTreeView): TNodeInfo;
     function SelectedSquadIndex(ATree: TTreeView): Integer;
     procedure UpdateInfoLabels;
@@ -108,7 +107,6 @@ type
     function IsEmptySlot(const UnitId: string): Boolean;
     function IsValidUnit(const UnitId: string): Boolean;
     function IsEntityUnit(const UnitId: string): Boolean;
-    procedure RestoreFocusToSquad(ATree: TTreeView; ASquadIndex: Integer);
     procedure UpdateUnitInfoPanel(const UnitId: string);
     procedure ClearInfoPanel;
     function GetVeterancyDisplay(AVeterancy: Integer): string;
@@ -117,7 +115,6 @@ type
     procedure CopyTreeStructure(ASourceTree, ATargetTree: TTreeView);
     procedure LoadSquadsFromSave;
     procedure UpdateTreeViewsFromSquads;
-    procedure UpdateSquadVeterancy(ASquadIndex: Integer);
     procedure SwapUnitsInSquads(ASquadA, AUnitA: Integer;
       ASquadB, AUnitB: Integer; const AUnitIdA, AUnitIdB: string);
     procedure RebuildFCampaignFromSquads;
@@ -735,66 +732,6 @@ begin
   end;
 end;
 
-procedure TFrmMain.PopulateTree(ATree: TTreeView);
-var
-  I, J: Integer;
-  SquadNode, UnitNode: TTreeNode;
-  Units: TArray<string>;
-  Info: TNodeInfo;
-  UnitCaption, SquadCaption: string;
-  IsEntity, IsEmpty: Boolean;
-  SquadMaxVeterancy: Integer;
-  SquadVeterancyText: string;
-begin
-  for I := 0 to Length(FAllSquadNames) - 1 do
-  begin
-    Info := TNodeInfo.Create;
-    Info.Kind := nkSquad;
-    Info.SquadIndex := I;
-    Info.UnitId := '';
-
-    // Squad-Namen mit höchstem Veteranenstatus erstellen
-    SquadCaption := FAllSquadNames[I];
-
-    // Höchsten Veteranenstatus im Squad ermitteln
-    SquadMaxVeterancy := GetSquadMaxVeterancy(I);
-    SquadVeterancyText := GetVeterancyDisplay(SquadMaxVeterancy);
-    SquadCaption := SquadCaption + SquadVeterancyText;
-
-    SquadNode := ATree.Items.AddObject(nil, SquadCaption, Info);
-
-    Units := FSave.GetSquadMembers(I);
-    for J := 0 to Length(Units) - 1 do
-    begin
-      IsEmpty := IsEmptySlot(Units[J]);
-
-      if IsEmpty then
-      begin
-        // Leere Slots als "Leer" anzeigen
-        UnitCaption := Units[J] + ' – [Leer]';
-        IsEntity := False;
-      end
-      else
-      begin
-        IsEntity := IsEntityUnit(Units[J]);
-
-        // Entity-Units bei aktivem Filter überspringen
-        if ChkOnlyHumans.Checked and IsEntity then
-          Continue;
-
-        // Vollständigen Anzeigename mit Veteranenstatus erstellen
-        UnitCaption := GetUnitDisplayName(Units[J]);
-      end;
-
-      Info := TNodeInfo.Create;
-      Info.Kind := nkUnit;
-      Info.SquadIndex := I;
-      Info.UnitId := Units[J];
-      UnitNode := ATree.Items.AddChildObject(SquadNode, UnitCaption, Info);
-    end;
-  end;
-end;
-
 function TFrmMain.SelectedUnitInfo(ATree: TTreeView): TNodeInfo;
 begin
   Result := nil;
@@ -969,36 +906,6 @@ begin
       S := S + '(keine Auswahl)';
   end;
   LblTargetInfo.Caption := S;
-end;
-
-procedure TFrmMain.UpdateSquadVeterancy(ASquadIndex: Integer);
-var
-  I: Integer;
-  UnitDetails: TUnitDetails;
-  UnitInfo: TUnitInfo;
-  MaxVeterancy: Integer;
-begin
-  MaxVeterancy := 0;
-
-  for I := 0 to Length(FSquads[ASquadIndex].UnitIds) - 1 do
-  begin
-    if IsEmptySlot(FSquads[ASquadIndex].UnitIds[I]) then
-      Continue;
-
-    try
-      UnitInfo := FSave.GetUnitInfo(FSquads[ASquadIndex].UnitIds[I]);
-      if not SameText(UnitInfo.Kind, 'Human') then
-        Continue;
-
-      UnitDetails := FSave.GetUnitDetails(FSquads[ASquadIndex].UnitIds[I]);
-      if UnitDetails.Veterancy > MaxVeterancy then
-        MaxVeterancy := UnitDetails.Veterancy;
-    except
-      Continue;
-    end;
-  end;
-
-  FSquads[ASquadIndex].MaxVeterancy := MaxVeterancy;
 end;
 
 procedure TFrmMain.UpdateTreeViewsFromSquads;
@@ -1301,33 +1208,6 @@ begin
   end;
 
   FSquadsDirty := False;
-end;
-
-procedure TFrmMain.RestoreFocusToSquad(ATree: TTreeView; ASquadIndex: Integer);
-var
-  I: Integer;
-  Node: TTreeNode;
-  Info: TNodeInfo;
-begin
-  if (ASquadIndex < 0) or (ASquadIndex >= Length(FAllSquadNames)) then
-    Exit;
-
-  // Suche den Squad-Knoten mit dem passenden Index
-  for I := 0 to ATree.Items.Count - 1 do
-  begin
-    Node := ATree.Items[I];
-    if Assigned(Node.Data) then
-    begin
-      Info := TNodeInfo(Node.Data);
-      if (Info.Kind = nkSquad) and (Info.SquadIndex = ASquadIndex) then
-      begin
-        // Fokus setzen und Squad expandieren
-        ATree.Selected := Node;
-        Node.Expand(False);
-        Exit;
-      end;
-    end;
-  end;
 end;
 
 procedure TFrmMain.RestoreFocusToUnit(ATree: TTreeView; ASquadIndex: Integer;
