@@ -272,13 +272,6 @@ begin
   end;
 end;
 
-procedure TConquestSave.SaveToSave;
-begin
-  if FSaveFile = '' then
-    raise EConquestSave.Create('No original .sav path set. Use SaveToSaveAs.');
-  SaveToSaveAs(FSaveFile);
-end;
-
 procedure TConquestSave.SaveToSaveAs(const DestFile: string);
 var
   Zip: TZipFile;
