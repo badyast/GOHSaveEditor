@@ -15,7 +15,7 @@ uses
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
   Vcl.ComCtrls,
   System.Generics.Collections, System.IOUtils, System.StrUtils, ConquestSave,
-  Vcl.Menus;
+  Vcl.Menus, Entitys;
 
 type
   TNodeKind = (nkSquad, nkUnit);
@@ -106,7 +106,9 @@ type
     procedure ShowStatus(const Msg: string);
     function IsEmptySlot(const UnitId: string): Boolean;
     function IsValidUnit(const UnitId: string): Boolean;
-    function IsEntityUnit(const UnitId: string): Boolean;
+    function IsEntityUnit(const UnitId: string): Boolean; overload;
+    function IsEntityUnit(const UnitId: string; ASquadIndex: Integer; AUnitIndex: Integer): Boolean; overload;
+    function FindSquadWithSameNameAndNonEmptyFirstSlot(const SquadName: string; ExcludeIndex: Integer): Integer;
     procedure UpdateUnitInfoPanel(const UnitId: string);
     procedure ClearInfoPanel;
     function GetVeterancyDisplay(AVeterancy: Integer): string;
@@ -540,12 +542,59 @@ SetLength(FSquads, SquadCount);
 end;
 
 function TFrmMain.IsEntityUnit(const UnitId: string): Boolean;
+begin
+  // Rufe die überladene Version mit Standardwerten auf
+  Result := IsEntityUnit(UnitId, -1, -1);
+end;
+
+function TFrmMain.IsEntityUnit(const UnitId: string; ASquadIndex: Integer; AUnitIndex: Integer): Boolean;
 var
   UnitInfo: TUnitInfo;
+  UnitTypeName: string;
+  I: Integer;
+  OtherUnitId: string;
 begin
   Result := False;
 
-  // Leere Slots sind keine Entities
+  // Spezialfall: Erste Unit eines Squads ist leer
+  if IsEmptySlot(UnitId) and (ASquadIndex >= 0) and (AUnitIndex = 0) then
+  begin
+    jachLog.LogDebug('IsEntityUnit: Erste Unit ist leer - Squad %d "%s"',
+      [ASquadIndex, FSquads[ASquadIndex].Name]);
+
+    // Schritt 1: ExtractUnitTypeName versuchen und in KNOWN_ENTITY_NAMES suchen
+    try
+      UnitTypeName := FSave.ExtractUnitTypeName(UnitId);
+      if UnitTypeName <> '' then
+      begin
+        Result := IsKnownEntityName(UnitTypeName);
+        jachLog.LogDebug('IsEntityUnit: Gefunden in campaign.scn: "%s" -> %s',
+          [UnitTypeName, IfThen(Result, 'Entity', 'Human')]);
+        Exit;
+      end;
+    except
+      on E: Exception do
+        jachLog.LogDebug('IsEntityUnit: ExtractUnitTypeName fehlgeschlagen: %s', [E.Message]);
+    end;
+
+    // Schritt 2: Suche Squad mit gleichem Namen und nicht-leerem ersten Slot
+    I := FindSquadWithSameNameAndNonEmptyFirstSlot(FSquads[ASquadIndex].Name, ASquadIndex);
+    if I >= 0 then
+    begin
+      // Verwende den ersten Slot dieses anderen Squads
+      Result := SameText(FSquads[I].UnitKinds[0], 'Entity');
+      jachLog.LogDebug('IsEntityUnit: Referenz-Squad %d gefunden -> %s',
+        [I, IfThen(Result, 'Entity', 'Human')]);
+      Exit;
+    end;
+
+    // Schritt 3: Default - Human annehmen
+    jachLog.LogDebug('IsEntityUnit: Keine Referenz gefunden -> Human angenommen');
+    Result := False;
+    Exit;
+  end;
+
+  // Normale Logik für nicht-leere Units
   if IsEmptySlot(UnitId) then
     Exit(False);
 
@@ -553,8 +602,39 @@ begin
     UnitInfo := FSave.GetUnitInfo(UnitId);
     Result := SameText(UnitInfo.Kind, 'Entity');
   except
-    // Bei Fehlern nehmen wir an, dass es kein Entity ist
-    Result := False;
+    // Bei Fehlern versuche Fallback auf Entity-Liste
+    try
+      UnitTypeName := FSave.ExtractUnitTypeName(UnitId);
+      if UnitTypeName <> '' then
+        Result := IsKnownEntityName(UnitTypeName);
+    except
+      // Bei beiden Fehlern nehmen wir an, dass es kein Entity ist
+      Result := False;
+    end;
+  end;
+end;
+
+function TFrmMain.FindSquadWithSameNameAndNonEmptyFirstSlot(const SquadName: string; ExcludeIndex: Integer): Integer;
+var
+  I: Integer;
+begin
+  Result := -1;
+
+  // Durchsuche alle Squads nach gleichem Namen
+  for I := 0 to Length(FSquads) - 1 do
+  begin
+    // Skip den aktuellen Squad
+    if I = ExcludeIndex then
+      Continue;
+
+    // Prüfe ob Name gleich ist und erster Slot nicht leer
+    if SameText(FSquads[I].Name, SquadName) and
+       (Length(FSquads[I].UnitIds) > 0) and
+       not IsEmptySlot(FSquads[I].UnitIds[0]) then
+    begin
+      Result := I;
+      Exit;
+    end;
   end;
 end;
 
@@ -946,7 +1026,15 @@ SquadCaption := SquadCaption + SquadVeterancyText;
       if IsEmpty then
       begin
         UnitCaption := FSquads[I].UnitIds[J] + ' – [Leer]';
-        IsEntity := False;
+        // Speziallogik für erste leere Unit eines Squads
+        if J = 0 then
+          IsEntity := IsEntityUnit(FSquads[I].UnitIds[J], I, J)
+        else
+          IsEntity := False;
+
+        // Filter auch für leere Slots anwenden
+        if ChkOnlyHumans.Checked and IsEntity then
+          Continue;
       end
       else
       begin

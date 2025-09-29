@@ -141,6 +141,7 @@
             <Form>FrmMain</Form>
         </DCCReference>
         <DCCReference Include="ConquestSave.pas"/>
+        <DCCReference Include="Entitys.pas"/>
         <None Include="GOHSaveEditor.todo"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
@@ -170,6 +171,12 @@
             </Platforms>
             <Deployment Version="4">
                 <DeployFile LocalName="GOHSaveEditor.exe" Configuration="Debug" Class="ProjectOutput">
+                    <Platform Name="Win64">
+                        <RemoteName>GOHSaveEditor.exe</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="GOHSaveEditor.exe" Configuration="Release" Class="ProjectOutput">
                     <Platform Name="Win64">
                         <RemoteName>GOHSaveEditor.exe</RemoteName>
                         <Overwrite>true</Overwrite>

@@ -1,10 +1,13 @@
 ﻿program GOHSaveEditor;
 
 uses
-  ujachLogAuto, ujachLogMgr,
-  Vcl.Forms, System.SysUtils,
-  MainForm in 'MainForm.pas' {FrmMain} ,
-  ConquestSave in 'ConquestSave.pas';
+  ujachLogAuto,
+  ujachLogMgr,
+  Vcl.Forms,
+  System.SysUtils,
+  MainForm in 'MainForm.pas' {FrmMain},
+  ConquestSave in 'ConquestSave.pas',
+  Entitys in 'Entitys.pas';
 
 {$R *.res}
 
@@ -31,8 +34,7 @@ begin
 
     jachLog.LogDebug('Erstelle Hauptformular');
     Application.CreateForm(TFrmMain, FrmMain);
-
-    jachLog.LogInfo('Starte Anwendungs-Message-Loop');
+  jachLog.LogInfo('Starte Anwendungs-Message-Loop');
     Application.Run;
 
   except

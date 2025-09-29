@@ -108,6 +108,7 @@ type
     function GetSquadMembers(SquadIndex: Integer): TArray<string>;
     function GetUnitInfo(const UnitId: string): TUnitInfo;
     function GetUnitDetails(const UnitId: string): TUnitDetails;
+    function ExtractUnitTypeName(const UnitId: string): string;
 
     // Edits
 
@@ -996,6 +997,27 @@ begin
   begin
     FStatus.SaveToFile(FStatusPath, TUTF8Encoding.Create(False));
     jachLog.LogDebug('Status-Datei gespeichert: %s', [FStatusPath]);
+  end;
+end;
+
+function TConquestSave.ExtractUnitTypeName(const UnitId: string): string;
+var
+  Text: string;
+  M: TMatch;
+begin
+  Result := '';
+
+  // Escape UnitId for regex
+  Text := ReadAllText;
+
+  // Pattern: {(Human|Entity) "UnitTypeName" UnitId
+  M := TRegEx.Match(Text, '\{(?:Human|Entity)\s+"([^"]+)"\s+' + TRegEx.Escape(UnitId));
+
+  if M.Success then
+    Result := M.Groups[1].Value
+  else
+  begin
+    jachLog.LogDebug('ExtractUnitTypeName: Could not extract type for UnitId %s', [UnitId]);
   end;
 end;
 
