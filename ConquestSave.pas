@@ -49,11 +49,9 @@ type
 
   // NEU: Squad-Sortierung Types
   TSquadSortCriteria = (scName, // Nach Name
-    scUnitCount, // Nach Anzahl Units
+    scStage, // Nach Stage/Gruppe
     scAverageVet, // Nach durchschnittlicher Veteranenstufe
-    scMaxVet, // Nach höchster Veteranenstufe
-    scHumanCount, // Nach Anzahl menschlicher Einheiten
-    scEntityCount // Nach Anzahl Entity-Einheiten
+    scMaxVet // Nach höchster Veteranenstufe
     );
 
   TSquadSortDirection = (sdAscending, sdDescending);
@@ -865,7 +863,11 @@ var
   SquadIndices: TArray<Integer>;
   SquadLines: TArray<string>;
   SortedLines: TArray<string>;
-  I: Integer;
+  I, J: Integer;
+  MaxVetCache, AvgVetCache: TDictionary<string, Integer>;
+  Units: TArray<string>;
+  UnitDetails: TUnitDetails;
+  VetSum, VetCount: Integer;
 begin
   jachLog.LogInfo('Sortiere Squad-Zeilen direkt in campaign.scn');
 
@@ -881,48 +883,153 @@ begin
   for I := 0 to Length(SquadIndices) - 1 do
     SquadLines[I] := FCampaign[SquadIndices[I]];
 
-  // Sortieren (einfache String-Sortierung nach Squad-Namen)
-  SortedLines := Copy(SquadLines);
+  // Pre-calculate Veterancy values for performance using Dictionary for O(1) lookup
+  MaxVetCache := nil;
+  AvgVetCache := nil;
 
-  TArray.Sort<string>(SortedLines, TComparer<string>.Construct(
-    function(const A, B: string): Integer
-    var
-      NameA, NameB: string;
-      M: TMatch;
-    begin
-      // Squad-Namen aus den Zeilen extrahieren
-      M := TRegEx.Match(A, '"([^"]+)"');
-      if M.Success then
-        NameA := M.Groups[1].Value
-      else
-        NameA := A;
-
-      M := TRegEx.Match(B, '"([^"]+)"');
-      if M.Success then
-        NameB := M.Groups[1].Value
-      else
-        NameB := B;
-
-      case Criteria of
-        scName:
-          Result := CompareText(NameA, NameB);
-        // Weitere Kriterien können später hinzugefügt werden
-      else
-        Result := CompareText(NameA, NameB);
-      end;
-
-      if Direction = sdDescending then
-        Result := -Result;
-    end));
-
-  // Sortierte Zeilen zurück in FCampaign schreiben
-  for I := 0 to Length(SquadIndices) - 1 do
+  if (Criteria = scMaxVet) or (Criteria = scAverageVet) then
   begin
-    FCampaign[SquadIndices[I]] := SortedLines[I];
-    jachLog.LogDebug('Squad-Zeile %d sortiert', [I]);
+    jachLog.LogInfo('Pre-calculating veterancy values for %d squads...', [Length(SquadLines)]);
+    MaxVetCache := TDictionary<string, Integer>.Create;
+    AvgVetCache := TDictionary<string, Integer>.Create;
+
+    try
+      for I := 0 to Length(SquadLines) - 1 do
+      begin
+        Units := ExtractUnitIdsFromSquadLine(SquadLines[I]);
+        VetSum := 0;
+        VetCount := 0;
+        MaxVetCache.Add(SquadLines[I], 0);
+
+        for J := 0 to Length(Units) - 1 do
+        begin
+          if not SameText(Units[J], '0xffffffff') then
+          begin
+            try
+              UnitDetails := GetUnitDetails(Units[J]);
+              if UnitDetails.Veterancy > MaxVetCache[SquadLines[I]] then
+                MaxVetCache.AddOrSetValue(SquadLines[I], UnitDetails.Veterancy);
+              VetSum := VetSum + UnitDetails.Veterancy;
+              Inc(VetCount);
+            except
+              // Ignoriere Fehler
+            end;
+          end;
+        end;
+
+        if VetCount > 0 then
+          AvgVetCache.Add(SquadLines[I], VetSum div VetCount)
+        else
+          AvgVetCache.Add(SquadLines[I], 0);
+      end;
+      jachLog.LogInfo('Veterancy pre-calculation completed');
+    except
+      if Assigned(MaxVetCache) then
+        MaxVetCache.Free;
+      if Assigned(AvgVetCache) then
+        AvgVetCache.Free;
+      raise;
+    end;
   end;
 
-  jachLog.LogInfo('Squad-Zeilen erfolgreich sortiert');
+  // Sortieren
+  SortedLines := Copy(SquadLines);
+
+  try
+    TArray.Sort<string>(SortedLines, TComparer<string>.Construct(
+      function(const A, B: string): Integer
+      var
+        NameA, NameB, StageA, StageB: string;
+        M: TMatch;
+        MaxVetA, MaxVetB, AvgVetA, AvgVetB: Integer;
+      begin
+        // Pattern: "Name" "Stage" {unit1} {unit2} ...
+        M := TRegEx.Match(A, '"([^"]+)"\s+"([^"]*)"');
+        if M.Success then
+        begin
+          NameA := M.Groups[1].Value;
+          StageA := M.Groups[2].Value;
+        end
+        else
+        begin
+          NameA := A;
+          StageA := '';
+        end;
+
+        M := TRegEx.Match(B, '"([^"]+)"\s+"([^"]*)"');
+        if M.Success then
+        begin
+          NameB := M.Groups[1].Value;
+          StageB := M.Groups[2].Value;
+        end
+        else
+        begin
+          NameB := B;
+          StageB := '';
+        end;
+
+        case Criteria of
+          scName:
+            Result := CompareText(NameA, NameB);
+
+          scStage:
+            begin
+              Result := CompareText(StageA, StageB);
+              // Sekundäre Sortierung nach Name wenn Stage gleich
+              if Result = 0 then
+                Result := CompareText(NameA, NameB);
+            end;
+
+          scMaxVet:
+            begin
+              // O(1) lookup using Dictionary
+              if not MaxVetCache.TryGetValue(A, MaxVetA) then
+                MaxVetA := 0;
+              if not MaxVetCache.TryGetValue(B, MaxVetB) then
+                MaxVetB := 0;
+
+              Result := MaxVetA - MaxVetB;
+              // Sekundäre Sortierung nach Name
+              if Result = 0 then
+                Result := CompareText(NameA, NameB);
+            end;
+
+          scAverageVet:
+            begin
+              // O(1) lookup using Dictionary
+              if not AvgVetCache.TryGetValue(A, AvgVetA) then
+                AvgVetA := 0;
+              if not AvgVetCache.TryGetValue(B, AvgVetB) then
+                AvgVetB := 0;
+
+              Result := AvgVetA - AvgVetB;
+              // Sekundäre Sortierung nach Name
+              if Result = 0 then
+                Result := CompareText(NameA, NameB);
+            end;
+        else
+          Result := CompareText(NameA, NameB);
+        end;
+
+        if Direction = sdDescending then
+          Result := -Result;
+      end));
+
+    // Sortierte Zeilen zurück in FCampaign schreiben
+    for I := 0 to Length(SquadIndices) - 1 do
+    begin
+      FCampaign[SquadIndices[I]] := SortedLines[I];
+      jachLog.LogDebug('Squad-Zeile %d sortiert', [I]);
+    end;
+
+    jachLog.LogInfo('Squad-Zeilen erfolgreich sortiert');
+
+  finally
+    if Assigned(MaxVetCache) then
+      MaxVetCache.Free;
+    if Assigned(AvgVetCache) then
+      AvgVetCache.Free;
+  end;
 end;
 
 function TConquestSave.GetSquadNamesAndStages(out Names: TArray<string>;

@@ -4,6 +4,7 @@
   Fokus on Unit Fixen
   DONE: Möglichkeit Units neu zu sortieren und anzuordnen }
 { DONE: Temporäres Verzeichnis löschen }
+{ TODO: fehlende conquest_* Einheiten zu den bekannten Entitys hinzufügen}
 unit MainForm;
 
 interface
@@ -562,20 +563,16 @@ begin
     jachLog.LogDebug('IsEntityUnit: Erste Unit ist leer - Squad %d "%s"',
       [ASquadIndex, FSquads[ASquadIndex].Name]);
 
-    // Schritt 1: ExtractUnitTypeName versuchen und in KNOWN_ENTITY_NAMES suchen
-    try
-      UnitTypeName := FSave.ExtractUnitTypeName(UnitId);
-      if UnitTypeName <> '' then
-      begin
-        Result := IsKnownEntityName(UnitTypeName);
-        jachLog.LogDebug('IsEntityUnit: Gefunden in campaign.scn: "%s" -> %s',
-          [UnitTypeName, IfThen(Result, 'Entity', 'Human')]);
-        Exit;
-      end;
-    except
-      on E: Exception do
-        jachLog.LogDebug('IsEntityUnit: ExtractUnitTypeName fehlgeschlagen: %s', [E.Message]);
+    // Schritt 1: Squad-Name in KNOWN_ENTITY_NAMES suchen
+    Result := IsKnownEntityName(FSquads[ASquadIndex].Name);
+    if Result then
+    begin
+      jachLog.LogDebug('IsEntityUnit: Squad-Name "%s" in KNOWN_ENTITY_NAMES gefunden -> Entity',
+        [FSquads[ASquadIndex].Name]);
+      Exit;
     end;
+    jachLog.LogDebug('IsEntityUnit: Squad-Name "%s" nicht in KNOWN_ENTITY_NAMES',
+      [FSquads[ASquadIndex].Name]);
 
     // Schritt 2: Suche Squad mit gleichem Namen und nicht-leerem ersten Slot
     I := FindSquadWithSameNameAndNonEmptyFirstSlot(FSquads[ASquadIndex].Name, ASquadIndex);
@@ -1950,16 +1947,12 @@ begin
   case Criteria of
     scName:
       Result := 'Name';
-    scUnitCount:
-      Result := 'Anzahl Units';
+    scStage:
+      Result := 'Gruppe';
     scAverageVet:
       Result := 'Durchschn. Veteranenstufe';
     scMaxVet:
       Result := 'Max. Veteranenstufe';
-    scHumanCount:
-      Result := 'Anzahl Menschen';
-    scEntityCount:
-      Result := 'Anzahl Entities';
   else
     Result := 'Unbekannt';
   end;
@@ -1985,29 +1978,20 @@ end;
 
 procedure TFrmMain.AddSortMenuItems;
 const
-  SORT_MENU_INFOS: array [0 .. 11] of TSortMenuInfo = ((Criteria: scName;
-    Direction: sdAscending; Caption: 'Nach Name (A-Z)'), (Criteria: scName;
-    Direction: sdDescending; Caption: 'Nach Name (Z-A)'),
-    (Criteria: scUnitCount; Direction: sdAscending;
-    Caption: 'Nach Unit-Anzahl (aufsteigend)'), (Criteria: scUnitCount;
-    Direction: sdDescending; Caption: 'Nach Unit-Anzahl (absteigend)'),
-    (Criteria: scAverageVet; Direction: sdAscending;
-    Caption: 'Nach durchschn. Veteranenstufe (aufsteigend)'),
-    (Criteria: scAverageVet; Direction: sdDescending;
-    Caption: 'Nach durchschn. Veteranenstufe (absteigend)'),
-    (Criteria: scMaxVet; Direction: sdAscending;
-    Caption: 'Nach max. Veteranenstufe (aufsteigend)'), (Criteria: scMaxVet;
-    Direction: sdDescending; Caption: 'Nach max. Veteranenstufe (absteigend)'),
-    (Criteria: scHumanCount; Direction: sdAscending;
-    Caption: 'Nach Anzahl Menschen (aufsteigend)'), (Criteria: scHumanCount;
-    Direction: sdDescending; Caption: 'Nach Anzahl Menschen (absteigend)'),
-    (Criteria: scEntityCount; Direction: sdAscending;
-    Caption: 'Nach Anzahl Entities (aufsteigend)'), (Criteria: scEntityCount;
-    Direction: sdDescending; Caption: 'Nach Anzahl Entities (absteigend)'));
+  SORT_MENU_INFOS: array [0 .. 7] of TSortMenuInfo = (
+    (Criteria: scName; Direction: sdAscending; Caption: 'Nach Name (A-Z)'),
+    (Criteria: scName; Direction: sdDescending; Caption: 'Nach Name (Z-A)'),
+    (Criteria: scStage; Direction: sdAscending; Caption: 'Nach Gruppe (aufsteigend)'),
+    (Criteria: scStage; Direction: sdDescending; Caption: 'Nach Gruppe (absteigend)'),
+    (Criteria: scAverageVet; Direction: sdAscending; Caption: 'Nach durchschn. Veteranenstufe (aufsteigend)'),
+    (Criteria: scAverageVet; Direction: sdDescending; Caption: 'Nach durchschn. Veteranenstufe (absteigend)'),
+    (Criteria: scMaxVet; Direction: sdAscending; Caption: 'Nach max. Veteranenstufe (aufsteigend)'),
+    (Criteria: scMaxVet; Direction: sdDescending; Caption: 'Nach max. Veteranenstufe (absteigend)')
+  );
 
   function NeedsSeparatorAfter(Index: Integer): Boolean;
   begin
-    Result := (Index = 1) or (Index = 3) or (Index = 7) or (Index = 9);
+    Result := (Index = 1) or (Index = 3) or (Index = 5);
   end;
 
 var

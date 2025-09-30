@@ -9,7 +9,7 @@ uses
 function IsKnownEntityName(const UnitTypeName: string): Boolean;
 
 const
-  KNOWN_ENTITY_NAMES: array[0..514] of string = (
+  KNOWN_ENTITY_NAMES: array[0..516] of string = (
     '100mm_bs3',
     '100mm_nbw35',
     '105mm_h33',
@@ -524,7 +524,9 @@ const
     'zis5_dshk',
     'zis5eng',
     'zis6_bm13_16',
-    'zis6_bm8_48'
+    'zis6_bm8_48',
+    'conquest_blenheim_light',
+    'conquest_blenheim'
   );
 
 implementation
