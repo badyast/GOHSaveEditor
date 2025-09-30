@@ -1248,15 +1248,69 @@ procedure TFrmMain.TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
 var
   Info: TNodeInfo;
   Canvas: TCanvas;
+  IsEntity: Boolean;
+  Stage: string;
+  StageColor: TColor;
+  R: TRect;
 begin
-  DefaultDraw := True;
   Canvas := Sender.Canvas;
+  DefaultDraw := True;
 
   if Assigned(Node.Data) then
   begin
     Info := TNodeInfo(Node.Data);
-    if Info.Kind = nkUnit then
+
+    if Info.Kind = nkSquad then
     begin
+      // Squad-Knoten: Hintergrundfarbe basierend auf Stage
+      Stage := FSquads[Info.SquadIndex].Stage;
+
+      // Stage-basierte Hintergrundfarben
+      if Stage = '' then
+        StageColor := clWindow
+      else if Pos('stage_1', Stage) > 0 then
+        StageColor := RGB(230, 240, 255) // Hellblau
+      else if Pos('stage_2', Stage) > 0 then
+        StageColor := RGB(240, 255, 230) // Hellgrün
+      else if Pos('stage_3', Stage) > 0 then
+        StageColor := RGB(255, 245, 230) // Hellorange
+      else if Pos('stage_4', Stage) > 0 then
+        StageColor := RGB(255, 230, 240) // Hellrosa
+      else if Pos('stage_5', Stage) > 0 then
+        StageColor := RGB(240, 230, 255) // Helllila
+      else
+        StageColor := RGB(245, 245, 245); // Hellgrau für andere Stages
+
+      // Nur Hintergrundfarbe setzen
+      Canvas.Brush.Color := StageColor;
+
+      // Hintergrund für komplette Zeile zeichnen
+      R := Node.DisplayRect(False);
+      R.Left := 0;
+      R.Right := Sender.ClientWidth;
+      Canvas.FillRect(R);
+
+      // Entity-Squads in Blau, Human-Squads in Schwarz
+      if Length(FSquads[Info.SquadIndex].UnitIds) > 0 then
+      begin
+        if IsEmptySlot(FSquads[Info.SquadIndex].UnitIds[0]) then
+          IsEntity := IsEntityUnit(FSquads[Info.SquadIndex].UnitIds[0], Info.SquadIndex, 0)
+        else
+          IsEntity := SameText(FSquads[Info.SquadIndex].UnitKinds[0], 'Entity');
+
+        if IsEntity then
+          Canvas.Font.Color := RGB(0, 80, 160) // Dunkelblau für Entity-Squads
+        else
+          Canvas.Font.Color := clWindowText; // Schwarz für Human-Squads
+      end
+      else
+        Canvas.Font.Color := clWindowText;
+
+      Canvas.Font.Style := [fsBold];
+    end
+    else if Info.Kind = nkUnit then
+    begin
+      // Unit-Knoten
       if IsEmptySlot(Info.UnitId) then
       begin
         // Leere Slots ausgegraut und kursiv
@@ -1269,12 +1323,6 @@ begin
         Canvas.Font.Color := clWindowText;
         Canvas.Font.Style := [];
       end;
-    end
-    else
-    begin
-      // Squad-Knoten normal darstellen
-      Canvas.Font.Color := clWindowText;
-      Canvas.Font.Style := [];
     end;
   end;
 end;
