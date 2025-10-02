@@ -31,3 +31,7 @@ __recovery/
 *.pch
 *.tmp
 *.err
+
+# User-specific settings and backups
+settings.ini
+Backups/
