@@ -10,25 +10,25 @@
 Da die Community Edition von Delphi 12.1 eingeschränkte Command-Line-Tools hat, verwenden wir ein Wrapper-Script:
 
 ```powershell
-C:\scripts\build-delphi.ps1 GOHSaveEditor.dpr
+C:\scripts\build-delphi.ps1 GOHSaveEditor.dproj
 ```
 
 **Parameter:**
-- `-ProjectFile`: Pfad zur .dpr Datei (erforderlich)
+- `-ProjectFile`: Pfad zur .dproj Datei (erforderlich)
 - `-Config`: Debug oder Release (Standard: Debug)
 - `-Platform`: Win32 oder Win64 (Standard: Win32)
 
 **Beispiele:**
 ```powershell
 # Debug-Build (Standard)
-C:\scripts\build-delphi.ps1 GOHSaveEditor.dpr
+C:\scripts\build-delphi.ps1 GOHSaveEditor.dproj
 
 # Release-Build für Win64
-C:\scripts\build-delphi.ps1 GOHSaveEditor.dpr -Config Release -Platform Win64
+C:\scripts\build-delphi.ps1 GOHSaveEditor.dproj -Config Release -Platform Win64
 ```
 
 ### Manueller Build in der IDE
-1. Öffne `GOHSaveEditor.dpr` in Delphi
+1. Öffne `GOHSaveEditor.dproj` in Delphi
 2. Wähle die gewünschte Build-Konfiguration (Debug/Release)
 3. Drücke F9 zum Kompilieren und Ausführen oder Strg+F9 nur zum Kompilieren
 
@@ -48,7 +48,3 @@ Folgende Hinweise/Warnungen können erscheinen und sind unkritisch:
 - Möglicherweise nicht initialisierte Variablen (DirSize, FileCount) - werden in try-block behandelt
 - Unbenutzte private Methoden (werden für zukünftige Features vorgehalten)
 
-## Ausgabe
-Die kompilierte .exe befindet sich nach erfolgreichem Build in:
-- Debug: `Win64\Debug\GOHSaveEditor.exe`
-- Release: `Win64\Release\GOHSaveEditor.exe`

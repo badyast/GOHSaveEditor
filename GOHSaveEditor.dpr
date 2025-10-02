@@ -7,7 +7,9 @@ uses
   System.SysUtils,
   MainForm in 'MainForm.pas' {FrmMain},
   ConquestSave in 'ConquestSave.pas',
-  Entitys in 'Entitys.pas';
+  Entitys in 'Entitys.pas',
+  Vcl.Themes,
+  Vcl.Styles;
 
 {$R *.res}
 
@@ -33,7 +35,8 @@ begin
     Application.MainFormOnTaskbar := True;
 
     jachLog.LogDebug('Erstelle Hauptformular');
-    Application.CreateForm(TFrmMain, FrmMain);
+    TStyleManager.TrySetStyle('Amethyst Kamri');
+  Application.CreateForm(TFrmMain, FrmMain);
   jachLog.LogInfo('Starte Anwendungs-Message-Loop');
     Application.Run;
 

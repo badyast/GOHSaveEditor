@@ -30,3 +30,4 @@ __recovery/
 *.obj
 *.pch
 *.tmp
+*.err
