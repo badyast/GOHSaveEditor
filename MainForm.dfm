@@ -222,6 +222,10 @@ object FrmMain: TFrmMain
     Top = 65520
     object Optionen1: TMenuItem
       Caption = 'Optionen'
+      object BackupOptionen1: TMenuItem
+        Caption = 'Backup-Optionen...'
+        OnClick = BackupOptionen1Click
+      end
       object Debuglevel: TMenuItem
         Caption = 'Debuglevel'
         object Off1: TMenuItem

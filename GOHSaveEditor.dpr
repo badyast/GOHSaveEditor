@@ -8,6 +8,8 @@ uses
   MainForm in 'MainForm.pas' {FrmMain},
   ConquestSave in 'ConquestSave.pas',
   Entitys in 'Entitys.pas',
+  AppSettings in 'AppSettings.pas',
+  BackupOptionsForm in 'BackupOptionsForm.pas' {FrmBackupOptions},
   Vcl.Themes,
   Vcl.Styles;
 

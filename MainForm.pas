@@ -15,8 +15,8 @@ uses
   System.Classes, System.Generics.Defaults, TypInfo, System.Math,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
   Vcl.ComCtrls, Vcl.ExtCtrls,
-  System.Generics.Collections, System.IOUtils, System.StrUtils, ConquestSave,
-  Vcl.Menus, Entitys;
+  System.Generics.Collections, System.IOUtils, System.StrUtils, System.DateUtils,
+  ConquestSave, Vcl.Menus, Entitys, AppSettings;
 
 type
   TNodeKind = (nkSquad, nkUnit);
@@ -73,6 +73,7 @@ type
     Info1: TMenuItem;
     Debug1: TMenuItem;
     Alert1: TMenuItem;
+    BackupOptionen1: TMenuItem;
     PageControl1: TPageControl;
     TabGeneral: TTabSheet;
     MemoInfo: TMemo;
@@ -91,6 +92,7 @@ type
     procedure TreeCustomDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
       State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure DebugLevelClick(Sender: TObject);
+    procedure BackupOptionen1Click(Sender: TObject);
 
   private
     FSquads: TArray<TSquadData>; // Live-Datenstruktur
@@ -100,6 +102,8 @@ type
     FSortMenuInfos: TArray<TSortMenuInfo>; // Array für Sortier-Informationen
     procedure SetControlsEnabled(AEnabled: Boolean);
     procedure BlinkForm(AColor: TColor; ACount: Integer);
+    procedure CreateBackup(const FilePath: string);
+    procedure CleanupOldBackups(const SaveName: string);
     procedure ClearTreeData(ATree: TTreeView);
     procedure PopulateTrees;
     function SelectedUnitInfo(ATree: TTreeView): TNodeInfo;
@@ -148,6 +152,9 @@ var
   FrmMain: TFrmMain;
 
 implementation
+
+uses
+  BackupOptionsForm;
 
 {$R *.dfm}
 
@@ -315,8 +322,6 @@ begin
 end;
 
 procedure TFrmMain.BlinkForm(AColor: TColor; ACount: Integer);
-var
-  OverlayPanel: TPanel;
 begin
   TThread.CreateAnonymousThread(
     procedure
@@ -354,6 +359,108 @@ begin
         Sleep(150);
       end;
     end).Start;
+end;
+
+procedure TFrmMain.CreateBackup(const FilePath: string);
+var
+  SaveName, TimeStamp, BackupDir, BackupFile: string;
+begin
+  if not TFile.Exists(FilePath) then
+    Exit; // Keine Datei zum Backup vorhanden
+
+  SaveName := TPath.GetFileNameWithoutExtension(FilePath);
+  TimeStamp := FormatDateTime('yyyymmdd_hhnnss', Now);
+  BackupDir := TPath.Combine(Settings.BackupFolder, SaveName + '_' + TimeStamp);
+  BackupFile := TPath.Combine(BackupDir, TPath.GetFileName(FilePath));
+
+  jachLog.LogInfo('=== BACKUP-OPERATION gestartet ===');
+  jachLog.LogInfo('Erstelle Backup von: %s', [FilePath]);
+  jachLog.LogInfo('Backup-Verzeichnis: %s', [BackupDir]);
+
+  try
+    // Backup-Verzeichnis erstellen
+    TDirectory.CreateDirectory(BackupDir);
+    jachLog.LogDebug('Backup-Verzeichnis erstellt');
+
+    // Datei kopieren
+    TFile.Copy(FilePath, BackupFile, True);
+    jachLog.LogInfo('Backup erfolgreich erstellt: %s', [BackupFile]);
+
+    // Alte Backups aufräumen falls konfiguriert
+    if Settings.MaxBackupCount > 0 then
+      CleanupOldBackups(SaveName);
+
+  except
+    on E: Exception do
+    begin
+      jachLog.LogError('Fehler beim Erstellen des Backups', E);
+      // Fehler nicht nach außen werfen, Speichern soll trotzdem funktionieren
+    end;
+  end;
+end;
+
+procedure TFrmMain.CleanupOldBackups(const SaveName: string);
+var
+  BackupDirs: TArray<string>;
+  DirList: TList<TPair<string, TDateTime>>;
+  Dir: string;
+  DirTime: TDateTime;
+  I: Integer;
+begin
+  if Settings.MaxBackupCount <= 0 then
+    Exit; // Unbegrenzte Backups
+
+  jachLog.LogDebug('Prüfe alte Backups für: %s (Max: %d)', [SaveName, Settings.MaxBackupCount]);
+
+  BackupDirs := TDirectory.GetDirectories(Settings.BackupFolder, SaveName + '_*');
+
+  if Length(BackupDirs) <= Settings.MaxBackupCount then
+  begin
+    jachLog.LogDebug('Anzahl Backups (%d) unter Maximum (%d), kein Cleanup nötig',
+      [Length(BackupDirs), Settings.MaxBackupCount]);
+    Exit;
+  end;
+
+  // Verzeichnisse mit Zeitstempel in Liste sammeln
+  DirList := TList<TPair<string, TDateTime>>.Create;
+  try
+    for Dir in BackupDirs do
+    begin
+      DirTime := TDirectory.GetCreationTime(Dir);
+      DirList.Add(TPair<string, TDateTime>.Create(Dir, DirTime));
+    end;
+
+    // Nach Datum sortieren (älteste zuerst)
+    DirList.Sort(TComparer<TPair<string, TDateTime>>.Construct(
+      function(const A, B: TPair<string, TDateTime>): Integer
+      begin
+        Result := CompareDateTime(A.Value, B.Value);
+      end));
+
+    // Älteste Backups löschen bis Max erreicht
+    I := 0;
+    while DirList.Count > Settings.MaxBackupCount do
+    begin
+      jachLog.LogInfo('Lösche altes Backup: %s', [DirList[0].Key]);
+      try
+        TDirectory.Delete(DirList[0].Key, True);
+        DirList.Delete(0);
+        Inc(I);
+      except
+        on E: Exception do
+        begin
+          jachLog.LogWarning('Konnte Backup nicht löschen: %s - %s', [DirList[0].Key, E.Message]);
+          DirList.Delete(0); // Trotzdem aus Liste entfernen
+        end;
+      end;
+    end;
+
+    if I > 0 then
+      jachLog.LogInfo('%d alte Backups gelöscht', [I]);
+
+  finally
+    DirList.Free;
+  end;
 end;
 
 procedure TFrmMain.ClearTreeData(ATree: TTreeView);
@@ -1608,7 +1715,11 @@ begin
   jachLog.LogInfo('Zieldatei: %s', [FileName]);
 
   if TFile.Exists(FileName) then
-    jachLog.LogInfo('Überschreibe existierende Datei: %s', [FileName])
+  begin
+    jachLog.LogInfo('Überschreibe existierende Datei: %s', [FileName]);
+    // Backup erstellen vor dem Überschreiben
+    CreateBackup(FileName);
+  end
   else
     jachLog.LogInfo('Erstelle neue Datei: %s', [FileName]);
 
@@ -1956,6 +2067,18 @@ begin
     MenuItem.Checked := True;
     jachLog.LogEmergency('Benutzer hat den Debuglevel auf ' + MenuItem.Hint +
       ' gesetzt');
+  end;
+end;
+
+procedure TFrmMain.BackupOptionen1Click(Sender: TObject);
+var
+  BackupForm: TFrmBackupOptions;
+begin
+  BackupForm := TFrmBackupOptions.Create(Self);
+  try
+    BackupForm.ShowModal;
+  finally
+    BackupForm.Free;
   end;
 end;
 
