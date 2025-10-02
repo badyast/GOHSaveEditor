@@ -14,7 +14,7 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
   System.Classes, System.Generics.Defaults, TypInfo, System.Math,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
-  Vcl.ComCtrls,
+  Vcl.ComCtrls, Vcl.ExtCtrls,
   System.Generics.Collections, System.IOUtils, System.StrUtils, ConquestSave,
   Vcl.Menus, Entitys;
 
@@ -99,6 +99,7 @@ type
     FAllSquadNames: TArray<string>;
     FSortMenuInfos: TArray<TSortMenuInfo>; // Array für Sortier-Informationen
     procedure SetControlsEnabled(AEnabled: Boolean);
+    procedure BlinkForm(AColor: TColor; ACount: Integer);
     procedure ClearTreeData(ATree: TTreeView);
     procedure PopulateTrees;
     function SelectedUnitInfo(ATree: TTreeView): TNodeInfo;
@@ -311,6 +312,48 @@ begin
   BtnSwap.Enabled := AEnabled;
   BtnSaveAs.Enabled := AEnabled;
   BtnExportCsv.Enabled := AEnabled;
+end;
+
+procedure TFrmMain.BlinkForm(AColor: TColor; ACount: Integer);
+var
+  OverlayPanel: TPanel;
+begin
+  TThread.CreateAnonymousThread(
+    procedure
+    var
+      J: Integer;
+      LocalPanel: TPanel;
+    begin
+      for J := 1 to ACount do
+      begin
+        // Overlay erstellen und anzeigen
+        TThread.Synchronize(nil,
+          procedure
+          begin
+            LocalPanel := TPanel.Create(Self);
+            LocalPanel.Parent := Self;
+            LocalPanel.Align := alClient;
+            LocalPanel.BevelOuter := bvNone;
+            LocalPanel.Color := AColor;
+            LocalPanel.ParentBackground := False;
+            LocalPanel.StyleElements := []; // VCL-Styles deaktivieren für echte Farbe
+            LocalPanel.BringToFront;
+          end);
+        Sleep(150);
+
+        // Overlay entfernen
+        TThread.Synchronize(nil,
+          procedure
+          begin
+            if Assigned(LocalPanel) then
+            begin
+              LocalPanel.Free;
+              LocalPanel := nil;
+            end;
+          end);
+        Sleep(150);
+      end;
+    end).Start;
 end;
 
 procedure TFrmMain.ClearTreeData(ATree: TTreeView);
@@ -1625,6 +1668,10 @@ begin
     LblStatus.Visible := True;
     jachLog.LogDebug('Erfolgs-UI-Feedback aktiviert');
 
+    // Fenster 2x grün blinken lassen
+    BlinkForm(RGB(144, 238, 144), 2); // Hellgrün
+    jachLog.LogDebug('Erfolgs-Blink gestartet');
+
     TThread.CreateAnonymousThread(
       procedure
       begin
@@ -1657,6 +1704,10 @@ begin
       LblStatus.Font.Color := clRed;
       LblStatus.Visible := True;
       jachLog.LogDebug('Fehler-UI-Feedback aktiviert');
+
+      // Fenster 3x rot blinken lassen
+      BlinkForm(RGB(255, 100, 100), 3); // Hellrot
+      jachLog.LogDebug('Fehler-Blink gestartet');
 
       Application.MessageBox(PChar('Fehler beim Speichern: ' + E.Message),
         'Fehler', MB_ICONERROR);
