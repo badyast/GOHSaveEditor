@@ -5,7 +5,7 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls,
-  AppSettings;
+  AppSettings, AppLanguage;
 
 type
   TFrmBackupOptions = class(TForm)
@@ -27,6 +27,7 @@ type
   private
     procedure LoadSettings;
     procedure SaveSettings;
+    procedure ApplyLanguage;
   public
   end;
 
@@ -42,7 +43,24 @@ uses
 
 procedure TFrmBackupOptions.FormCreate(Sender: TObject);
 begin
+  ApplyLanguage;
   LoadSettings;
+end;
+
+procedure TFrmBackupOptions.ApplyLanguage;
+var
+  Lang: TLanguageStrings;
+begin
+  Lang := GetLanguageStrings(Settings.Language);
+
+  Caption := Lang.BackupOptionsCaption;
+  LblBackupFolder.Caption := Lang.LblBackupFolder;
+  LblMaxBackups.Caption := Lang.LblMaxBackups;
+  BtnBrowse.Caption := Lang.BtnBrowse;
+  ChkUnlimited.Caption := Lang.ChkUnlimited;
+  LblInfo.Caption := Lang.BackupInfo;
+  BtnOK.Caption := Lang.BtnOK;
+  BtnCancel.Caption := Lang.BtnCancel;
 end;
 
 procedure TFrmBackupOptions.LoadSettings;
@@ -77,7 +95,7 @@ begin
       Settings.MaxBackupCount := MaxCount
     else
     begin
-      MessageDlg('Bitte geben Sie eine gültige Zahl größer als 0 ein.', mtError, [mbOK], 0);
+      MessageDlg(GetLanguageStrings(Settings.Language).MsgInvalidNumber, mtError, [mbOK], 0);
       Exit;
     end;
   end;
@@ -90,7 +108,7 @@ var
   Dir: string;
 begin
   Dir := EdtBackupFolder.Text;
-  if SelectDirectory('Backup-Ordner wählen', '', Dir, [sdNewUI, sdNewFolder]) then
+  if SelectDirectory(GetLanguageStrings(Settings.Language).SelectBackupFolder, '', Dir, [sdNewUI, sdNewFolder]) then
     EdtBackupFolder.Text := Dir;
 end;
 

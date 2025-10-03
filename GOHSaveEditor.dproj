@@ -118,7 +118,6 @@
     <PropertyGroup Condition="'$(Cfg_1_Win64)'!=''">
         <AppDPIAwarenessMode>PerMonitorV2</AppDPIAwarenessMode>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_Locale>1033</VerInfo_Locale>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
@@ -146,6 +145,10 @@
         </DCCReference>
         <DCCReference Include="ConquestSave.pas"/>
         <DCCReference Include="Entitys.pas"/>
+        <DCCReference Include="AppSettings.pas"/>
+        <DCCReference Include="BackupOptionsForm.pas">
+            <Form>FrmBackupOptions</Form>
+        </DCCReference>
         <None Include="GOHSaveEditor.todo"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

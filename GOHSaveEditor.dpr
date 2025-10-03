@@ -9,6 +9,7 @@ uses
   ConquestSave in 'ConquestSave.pas',
   Entitys in 'Entitys.pas',
   AppSettings in 'AppSettings.pas',
+  AppLanguage in 'AppLanguage.pas',
   BackupOptionsForm in 'BackupOptionsForm.pas' {FrmBackupOptions},
   Vcl.Themes,
   Vcl.Styles;

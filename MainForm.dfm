@@ -226,6 +226,19 @@ object FrmMain: TFrmMain
         Caption = 'Backup-Optionen...'
         OnClick = BackupOptionen1Click
       end
+      object Sprache1: TMenuItem
+        Caption = 'Sprache'
+        object Deutsch1: TMenuItem
+          Caption = 'Deutsch'
+          Hint = 'de'
+          OnClick = LanguageClick
+        end
+        object English1: TMenuItem
+          Caption = 'English'
+          Hint = 'en'
+          OnClick = LanguageClick
+        end
+      end
       object Debuglevel: TMenuItem
         Caption = 'Debuglevel'
         object Off1: TMenuItem

@@ -16,7 +16,7 @@ uses
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
   Vcl.ComCtrls, Vcl.ExtCtrls,
   System.Generics.Collections, System.IOUtils, System.StrUtils, System.DateUtils,
-  ConquestSave, Vcl.Menus, Entitys, AppSettings;
+  ConquestSave, Vcl.Menus, Entitys, AppSettings, AppLanguage;
 
 type
   TNodeKind = (nkSquad, nkUnit);
@@ -74,6 +74,9 @@ type
     Debug1: TMenuItem;
     Alert1: TMenuItem;
     BackupOptionen1: TMenuItem;
+    Sprache1: TMenuItem;
+    Deutsch1: TMenuItem;
+    English1: TMenuItem;
     PageControl1: TPageControl;
     TabGeneral: TTabSheet;
     MemoInfo: TMemo;
@@ -93,6 +96,7 @@ type
       State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure DebugLevelClick(Sender: TObject);
     procedure BackupOptionen1Click(Sender: TObject);
+    procedure LanguageClick(Sender: TObject);
 
   private
     FSquads: TArray<TSquadData>; // Live-Datenstruktur
@@ -100,6 +104,7 @@ type
     FSave: TConquestSave;
     FAllSquadNames: TArray<string>;
     FSortMenuInfos: TArray<TSortMenuInfo>; // Array für Sortier-Informationen
+    FSortMenu: TMenuItem; // Referenz auf Sortier-Menü
     procedure SetControlsEnabled(AEnabled: Boolean);
     procedure BlinkForm(AColor: TColor; ACount: Integer);
     procedure CreateBackup(const FilePath: string);
@@ -139,8 +144,10 @@ type
     procedure UncheckMenu(AMenuItem: TMenuItem);
     procedure SortMenuItemClick(Sender: TObject);
     procedure AddSortMenuItems;
+    procedure RebuildSortMenu;
     function GetSortCriteriaDisplayName(Criteria: TSquadSortCriteria): string;
     function GetStageGroupDisplay(const Stage: string): string;
+    procedure ApplyLanguage;
 
   public
 
@@ -197,6 +204,13 @@ begin
     jachLog.LogDebug('UI-Komponenten finalisiert');
 
     jachLog.LogInfo('MainForm-Initialisierung erfolgreich abgeschlossen');
+
+    // Sprache initialisieren
+    ApplyLanguage;
+    if Settings.Language = 'de' then
+      Deutsch1.Checked := True
+    else
+      English1.Checked := True;
 
   except
     on E: Exception do
@@ -531,7 +545,7 @@ SetLength(FSquads, SquadCount);
     jachLog.LogInfo('Gesamtanzahl Units in allen Squads: %d', [TotalUnits]);
 
     ProcessedUnits := 0;
-    ShowProgress('Lade Unit-Daten...', TotalUnits);
+    ShowProgress(GetLanguageStrings(Settings.Language).StatusLoadingUnitData, TotalUnits);
 
     // Squad-für-Squad-Verarbeitung
     for I := 0 to Length(SquadNames) - 1 do
@@ -568,7 +582,7 @@ SetLength(FSquads, SquadCount);
         if IsEmptySlot(FSquads[I].UnitIds[J]) then
         begin
           // Leere Slots
-          FSquads[I].UnitNames[J] := '[Leer]';
+          FSquads[I].UnitNames[J] := GetLanguageStrings(Settings.Language).UnitEmpty;
           FSquads[I].UnitVeterancies[J] := 0;
           FSquads[I].UnitKinds[J] := 'Empty';
           Inc(EmptySlotCount);
@@ -628,7 +642,7 @@ SetLength(FSquads, SquadCount);
               jachLog.LogError
                 ('Schwerwiegender Unit-Fehler für %s in Squad "%s": %s',
                 [FSquads[I].UnitIds[J], SquadNames[I], E.Message]);
-              FSquads[I].UnitNames[J] := '(Fehler)';
+              FSquads[I].UnitNames[J] := GetLanguageStrings(Settings.Language).UnitError;
               FSquads[I].UnitVeterancies[J] := 0;
               FSquads[I].UnitKinds[J] := 'Unknown';
               Inc(ErrorCount);
@@ -1026,7 +1040,7 @@ begin
   SetUILoadingState(True);
 
   try
-    ShowProgress('Lade Savegame...');
+    ShowProgress(GetLanguageStrings(Settings.Language).StatusLoadingSave);
     jachLog.LogDebug('Fortschrittsanzeige aktiviert');
 
     jachLog.LogDebug('Rufe FSave.LoadFromSave auf');
@@ -1043,7 +1057,7 @@ begin
     jachLog.LogInfo('TreeView-Anzeige aktualisiert');
 
     SetControlsEnabled(True);
-    ShowStatus('Save geladen: ' + ExtractFileName(FileName));
+    ShowStatus(Format(GetLanguageStrings(Settings.Language).StatusSaveLoaded, [ExtractFileName(FileName)]));
     ClearInfoPanel;
     jachLog.LogDebug('UI in Normal-Zustand zurückgesetzt');
 
@@ -1062,7 +1076,7 @@ begin
       jachLog.LogError('Exception-Details: %s: %s', [E.ClassName, E.Message]);
 
       SetControlsEnabled(False);
-      ShowStatus('Fehler beim Laden!');
+      ShowStatus(GetLanguageStrings(Settings.Language).StatusErrorLoading);
       jachLog.LogDebug('UI auf Fehler-Zustand gesetzt');
 
       Application.MessageBox(PChar('Fehler beim Laden: ' + E.Message), 'Fehler',
@@ -1217,10 +1231,13 @@ SquadCaption := SquadCaption + SquadVeterancyText;
 end;
 
 procedure TFrmMain.ClearInfoPanel;
+var
+  Lang: TLanguageStrings;
 begin
+  Lang := GetLanguageStrings(Settings.Language);
   jachLog.LogDebug('Info-Panel geleert');
   MemoInfo.Clear;
-  MemoInfo.Lines.Add('Keine Unit ausgewählt');
+  MemoInfo.Lines.Add(Lang.InfoNoUnitSelected);
   ListViewInventory.Items.Clear;
 end;
 
@@ -1231,14 +1248,16 @@ var
   I: Integer;
   StartTime: TDateTime;
   ElapsedMs: Integer;
+  Lang: TLanguageStrings;
 begin
+  Lang := GetLanguageStrings(Settings.Language);
   StartTime := Now;
   jachLog.LogDebug('Aktualisiere Unit-Info-Panel für: %s', [UnitId]);
 
   if IsEmptySlot(UnitId) then
   begin
     MemoInfo.Clear;
-    MemoInfo.Lines.Add('Leerer Slot');
+    MemoInfo.Lines.Add(Lang.InfoEmptySlot);
     ListViewInventory.Items.Clear;
     jachLog.LogDebug('Unit-Info-Panel: Leerer Slot angezeigt');
     Exit;
@@ -1251,26 +1270,26 @@ begin
 
     // Allgemeine Informationen
     MemoInfo.Clear;
-    MemoInfo.Lines.Add('=== UNIT INFORMATIONEN ===');
+    MemoInfo.Lines.Add(Lang.InfoUnitInformation);
     MemoInfo.Lines.Add('');
-    MemoInfo.Lines.Add(Format('Unit ID:        %s', [Details.UnitId]));
-    MemoInfo.Lines.Add(Format('Typ:            %s', [Details.Kind]));
-    MemoInfo.Lines.Add(Format('Unit-Klasse:    %s', [Details.UnitType]));
-    MemoInfo.Lines.Add(Format('Name:           %s', [Details.Name]));
+    MemoInfo.Lines.Add(Format('%-16s%s', [Lang.InfoUnitId, Details.UnitId]));
+    MemoInfo.Lines.Add(Format('%-16s%s', [Lang.InfoType, Details.Kind]));
+    MemoInfo.Lines.Add(Format('%-16s%s', [Lang.InfoUnitClass, Details.UnitType]));
+    MemoInfo.Lines.Add(Format('%-16s%s', [Lang.InfoName, Details.Name]));
     MemoInfo.Lines.Add('');
 
     if Details.Position <> '' then
-      MemoInfo.Lines.Add(Format('Position:       %s', [Details.Position]));
+      MemoInfo.Lines.Add(Format('%-16s%s', [Lang.InfoPosition, Details.Position]));
 
     if Details.Veterancy > 0 then
-      MemoInfo.Lines.Add(Format('Veteranenstufe: %d%s', [Details.Veterancy,
+      MemoInfo.Lines.Add(Format('%-16s%d%s', [Lang.InfoVeterancy, Details.Veterancy,
         GetVeterancyDisplay(Details.Veterancy)]));
 
     if Details.Score > 0 then
-      MemoInfo.Lines.Add(Format('Score:          %.2f', [Details.Score]));
+      MemoInfo.Lines.Add(Format('%-16s%.2f', [Lang.InfoScore, Details.Score]));
 
     if Details.InfantryKills > 0 then
-      MemoInfo.Lines.Add(Format('Infantry Kills: %d', [Details.InfantryKills]));
+      MemoInfo.Lines.Add(Format('%-16s%d', [Lang.InfoInfantryKills, Details.InfantryKills]));
 
     MemoInfo.Lines.Add(Format('MID:            %d', [Details.MID]));
 
@@ -1279,13 +1298,13 @@ begin
         [Details.NameId1, Details.NameId2]));
 
     if Details.LastItem <> '' then
-      MemoInfo.Lines.Add(Format('Letzte Waffe:   %s', [Details.LastItem]));
+      MemoInfo.Lines.Add(Format('%-16s%s', [Lang.InfoLastWeapon, Details.LastItem]));
 
     if Details.LastThrowItem <> '' then
-      MemoInfo.Lines.Add(Format('Letzte Granate: %s', [Details.LastThrowItem]));
+      MemoInfo.Lines.Add(Format('%-16s%s', [Lang.InfoLastGrenade, Details.LastThrowItem]));
 
     if Details.FsmState <> '' then
-      MemoInfo.Lines.Add(Format('FSM-Status:     %s', [Details.FsmState]));
+      MemoInfo.Lines.Add(Format('%-16s%s', [Lang.InfoFsmState, Details.FsmState]));
 
     // Inventar
     ListViewInventory.Items.Clear;
@@ -1310,7 +1329,7 @@ begin
       Item.SubItems.Add('Cell ' + Details.Inventory[I].Cell);
 
       if Details.Inventory[I].IsUserItem then
-        Item.SubItems.Add('Ausgerüstet')
+        Item.SubItems.Add(Lang.InfoEquipped)
       else
         Item.SubItems.Add('');
     end;
@@ -1678,7 +1697,7 @@ begin
     ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
     jachLog.LogInfo('SWAP-OPERATION erfolgreich abgeschlossen in %d ms',
       [ElapsedMs]);
-    ShowStatus('Units getauscht.');
+    ShowStatus(GetLanguageStrings(Settings.Language).StatusUnitsSwapped);
 
   except
     on E: Exception do
@@ -1770,7 +1789,7 @@ begin
       end;
     end;
 
-    ShowStatus('✓ Erfolgreich gespeichert: ' + ExtractFileName(FileName));
+    ShowStatus(Format(GetLanguageStrings(Settings.Language).StatusSavedSuccessfully, [ExtractFileName(FileName)]));
     jachLog.LogDebug('Status-Anzeige aktualisiert');
 
     // UI-Feedback
@@ -1807,7 +1826,7 @@ begin
         [ElapsedMs], E);
       jachLog.LogError('Zieldatei war: %s', [FileName]);
 
-      ShowStatus('Fehler beim Speichern!');
+      ShowStatus(GetLanguageStrings(Settings.Language).StatusErrorSaving);
       jachLog.LogDebug('Status auf Fehler gesetzt');
 
       // Fehler-UI-Feedback
@@ -1874,7 +1893,7 @@ begin
   jachLog.LogInfo('CSV-Export nach: %s', [SaveDialog1.FileName]);
 
   SetUILoadingState(True);
-  ShowProgress('Exportiere CSV-Datei...');
+  ShowProgress(GetLanguageStrings(Settings.Language).StatusExportingCsv);
   jachLog.LogDebug('UI in Export-Zustand versetzt');
 
   Csv := TStringList.Create;
@@ -1890,7 +1909,7 @@ begin
     FAllSquadNames := FSave.GetSquadNames;
     jachLog.LogInfo('Exportiere %d Squads', [Length(FAllSquadNames)]);
 
-    ShowProgress('Exportiere CSV-Datei...', Length(FAllSquadNames));
+    ShowProgress(GetLanguageStrings(Settings.Language).StatusExportingCsv, Length(FAllSquadNames));
 
     for I := 0 to Length(FAllSquadNames) - 1 do
     begin
@@ -1954,7 +1973,7 @@ begin
       end;
     end;
 
-    UpdateProgress(Length(FAllSquadNames), 'Schreibe CSV-Datei...');
+    UpdateProgress(Length(FAllSquadNames), GetLanguageStrings(Settings.Language).CsvWriting);
     jachLog.LogDebug('Schreibe CSV-Datei mit %d Zeilen', [LineCount]);
 
     Csv.SaveToFile(SaveDialog1.FileName, TEncoding.UTF8);
@@ -1972,13 +1991,13 @@ begin
     else
       jachLog.LogInfo('CSV-Export vollständig erfolgreich abgeschlossen');
 
-    ShowStatus('CSV exportiert: ' + ExtractFileName(SaveDialog1.FileName));
+    ShowStatus(Format(GetLanguageStrings(Settings.Language).StatusCsvExported, [ExtractFileName(SaveDialog1.FileName)]));
 
   except
     on E: Exception do
     begin
       jachLog.LogError('CSV-EXPORT fehlgeschlagen', E);
-      ShowStatus('Fehler beim CSV-Export!');
+      ShowStatus(GetLanguageStrings(Settings.Language).StatusErrorCsvExport);
       Application.MessageBox(PChar('Fehler beim CSV-Export: ' + E.Message),
         'Fehler', MB_ICONERROR);
     end;
@@ -2082,6 +2101,70 @@ begin
   end;
 end;
 
+procedure TFrmMain.LanguageClick(Sender: TObject);
+var
+  MenuItem: TMenuItem;
+begin
+  if Sender is TMenuItem then
+  begin
+    MenuItem := TMenuItem(Sender);
+    Settings.Language := MenuItem.Hint; // 'de' oder 'en'
+    Settings.Save;
+    UncheckMenu(Sprache1);
+    MenuItem.Checked := True;
+    ApplyLanguage;
+  end;
+end;
+
+procedure TFrmMain.ApplyLanguage;
+var
+  Lang: TLanguageStrings;
+begin
+  Lang := GetLanguageStrings(Settings.Language);
+
+  // MainForm
+  Caption := Lang.FormCaption;
+  if not Assigned(FSave) then
+    LblSave.Caption := Lang.NoFile;
+  LblBaseInfo.Caption := Lang.SourceNoSelection;
+  LblTargetInfo.Caption := Lang.TargetNoSelection;
+  LblStatus.Caption := Lang.LoadingData;
+  BtnOpen.Caption := Lang.BtnLoadSave;
+  BtnTransfer.Caption := Lang.BtnTransferDisabled;
+  BtnSwap.Caption := Lang.BtnSwapUnits;
+  BtnSaveAs.Caption := Lang.BtnSaveAs;
+  BtnExportCsv.Caption := Lang.BtnExportCsv;
+  ChkOnlyHumans.Caption := Lang.ChkOnlyHumans;
+  TabGeneral.Caption := Lang.TabGeneral;
+  TabInventory.Caption := Lang.TabInventory;
+
+  // Inventory columns
+  ListViewInventory.Columns[0].Caption := Lang.ColItem;
+  ListViewInventory.Columns[1].Caption := Lang.ColType;
+  ListViewInventory.Columns[2].Caption := Lang.ColCount;
+  ListViewInventory.Columns[3].Caption := Lang.ColPosition;
+  ListViewInventory.Columns[4].Caption := Lang.ColNote;
+
+  // Menu
+  Optionen1.Caption := Lang.MenuOptions;
+  BackupOptionen1.Caption := Lang.MenuBackupOptions;
+  Debuglevel.Caption := Lang.MenuDebugLevel;
+  Sprache1.Caption := Lang.MenuLanguage;
+
+  // Sortier-Menü neu aufbauen
+  RebuildSortMenu;
+
+  // Info-Panel aktualisieren
+  if Assigned(TreeBase.Selected) and Assigned(TreeBase.Selected.Data) then
+    UpdateUnitInfoPanel(TNodeInfo(TreeBase.Selected.Data).UnitId)
+  else if Assigned(TreeTarget.Selected) and Assigned(TreeTarget.Selected.Data) then
+    UpdateUnitInfoPanel(TNodeInfo(TreeTarget.Selected.Data).UnitId)
+  else
+    ClearInfoPanel;
+
+  jachLog.LogInfo('Sprache gewechselt zu: %s', [Settings.Language]);
+end;
+
 procedure TFrmMain.SortSquads(Criteria: TSquadSortCriteria;
 Direction: TSquadSortDirection);
 var
@@ -2098,10 +2181,9 @@ begin
   if FSquadsDirty then
   begin
     case Application.MessageBox
-      ('Sie haben ungespeicherte Änderungen an den Squad-Zusammenstellungen. ' +
-      'Diese müssen vor der Sortierung gespeichert werden.'#13#13 +
-      'Möchten Sie die Änderungen jetzt speichern und dann sortieren?',
-      'Ungespeicherte Änderungen', MB_YESNOCANCEL + MB_ICONQUESTION) of
+      (PChar(GetLanguageStrings(Settings.Language).MsgUnsavedChanges),
+      PChar(GetLanguageStrings(Settings.Language).MsgUnsavedChangesTitle),
+      MB_YESNOCANCEL + MB_ICONQUESTION) of
 
       IDYES:
         begin
@@ -2132,7 +2214,7 @@ begin
   end;
 
   SetUILoadingState(True);
-  ShowProgress('Sortiere Squads...');
+  ShowProgress(GetLanguageStrings(Settings.Language).StatusSortingSquads);
 
   try
     // Direkte Sortierung in campaign.scn
@@ -2146,16 +2228,16 @@ begin
     ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
     jachLog.LogInfo('Squad-Sortierung erfolgreich abgeschlossen in %d ms',
       [ElapsedMs]);
-    ShowStatus(Format('Squads sortiert nach %s',
+    ShowStatus(Format(GetLanguageStrings(Settings.Language).StatusSquadsSorted,
       [GetSortCriteriaDisplayName(Criteria)]));
 
   except
     on E: Exception do
     begin
       jachLog.LogError('Fehler bei Squad-Sortierung', E);
-      ShowStatus('Fehler beim Sortieren!');
-      Application.MessageBox(PChar('Fehler beim Sortieren: ' + E.Message),
-        'Fehler', MB_ICONERROR);
+      ShowStatus(GetLanguageStrings(Settings.Language).StatusErrorSorting);
+      Application.MessageBox(PChar(Format(GetLanguageStrings(Settings.Language).MsgErrorSorting, [E.Message])),
+        PChar(GetLanguageStrings(Settings.Language).MsgErrorSortingTitle), MB_ICONERROR);
     end;
   end;
 
@@ -2165,18 +2247,21 @@ end;
 
 function TFrmMain.GetSortCriteriaDisplayName
   (Criteria: TSquadSortCriteria): string;
+var
+  Lang: TLanguageStrings;
 begin
+  Lang := GetLanguageStrings(Settings.Language);
   case Criteria of
     scName:
-      Result := 'Name';
+      Result := Lang.SortCriteriaName;
     scStage:
-      Result := 'Gruppe';
+      Result := Lang.SortCriteriaStage;
     scAverageVet:
-      Result := 'Durchschn. Veteranenstufe';
+      Result := Lang.SortCriteriaAvgVet;
     scMaxVet:
-      Result := 'Max. Veteranenstufe';
+      Result := Lang.SortCriteriaMaxVet;
   else
-    Result := 'Unbekannt';
+    Result := 'Unknown';
   end;
 end;
 
@@ -2226,34 +2311,63 @@ begin
   for I := 0 to High(SORT_MENU_INFOS) do
     FSortMenuInfos[I] := SORT_MENU_INFOS[I];
 
-  SortMenu := TMenuItem.Create(Self);
-  SortMenu.Caption := '&Sortieren';
+  FSortMenu := TMenuItem.Create(Self);
+  FSortMenu.Caption := GetLanguageStrings(Settings.Language).MenuSort;
 
   // Menü-Items in Schleife erstellen
   for I := 0 to High(SORT_MENU_INFOS) do
   begin
     MenuItem := TMenuItem.Create(Self);
-    MenuItem.Caption := SORT_MENU_INFOS[I].Caption;
+    MenuItem.Caption := GetSortMenuCaption(Ord(SORT_MENU_INFOS[I].Criteria),
+                                            Ord(SORT_MENU_INFOS[I].Direction),
+                                            Settings.Language);
     MenuItem.Tag := I; // Index für Event-Handler
     MenuItem.OnClick := SortMenuItemClick;
-    SortMenu.Add(MenuItem);
+    FSortMenu.Add(MenuItem);
 
     // Trennstrich nach bestimmten Items
     if NeedsSeparatorAfter(I) then
     begin
       SepItem := TMenuItem.Create(Self);
       SepItem.Caption := '-';
-      SortMenu.Add(SepItem);
+      FSortMenu.Add(SepItem);
     end;
   end;
 
-  MainMenu1.Items.Add(SortMenu);
+  MainMenu1.Items.Add(FSortMenu);
+end;
+
+procedure TFrmMain.RebuildSortMenu;
+var
+  I: Integer;
+begin
+  if not Assigned(FSortMenu) then
+    Exit;
+
+  // Sortier-Menü Titel aktualisieren
+  FSortMenu.Caption := GetLanguageStrings(Settings.Language).MenuSort;
+
+  // Alle Menüeinträge durchgehen und Captions aktualisieren (außer Trennstriche)
+  for I := 0 to FSortMenu.Count - 1 do
+  begin
+    if FSortMenu.Items[I].Caption <> '-' then
+    begin
+      // Tag enthält den Index in FSortMenuInfos
+      if FSortMenu.Items[I].Tag < Length(FSortMenuInfos) then
+      begin
+        FSortMenu.Items[I].Caption := GetSortMenuCaption(
+          Ord(FSortMenuInfos[FSortMenu.Items[I].Tag].Criteria),
+          Ord(FSortMenuInfos[FSortMenu.Items[I].Tag].Direction),
+          Settings.Language);
+      end;
+    end;
+  end;
 end;
 
 function TFrmMain.GetStageGroupDisplay(const Stage: string): string;
 begin
   if Stage = '' then
-    Result := ' [Keine Gruppe]'
+    Result := GetLanguageStrings(Settings.Language).StageNoGroup
   else
     Result := ' [' + Stage + ']';
 end;
