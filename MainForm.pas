@@ -14,7 +14,7 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
   System.Classes, System.Generics.Defaults, TypInfo, System.Math,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
-  Vcl.ComCtrls, Vcl.ExtCtrls,
+  Vcl.ComCtrls, Vcl.ExtCtrls, Vcl.Themes,
   System.Generics.Collections, System.IOUtils, System.StrUtils, System.DateUtils,
   ConquestSave, Vcl.Menus, Entitys, AppSettings, AppLanguage;
 
@@ -77,6 +77,9 @@ type
     Sprache1: TMenuItem;
     Deutsch1: TMenuItem;
     English1: TMenuItem;
+    Design1: TMenuItem;
+    Hell1: TMenuItem;
+    Dunkel1: TMenuItem;
     PageControl1: TPageControl;
     TabGeneral: TTabSheet;
     MemoInfo: TMemo;
@@ -97,6 +100,7 @@ type
     procedure DebugLevelClick(Sender: TObject);
     procedure BackupOptionen1Click(Sender: TObject);
     procedure LanguageClick(Sender: TObject);
+    procedure ThemeClick(Sender: TObject);
 
   private
     FSquads: TArray<TSquadData>; // Live-Datenstruktur
@@ -148,6 +152,7 @@ type
     function GetSortCriteriaDisplayName(Criteria: TSquadSortCriteria): string;
     function GetStageGroupDisplay(const Stage: string): string;
     procedure ApplyLanguage;
+    procedure ApplyThemeColors;
 
   public
 
@@ -211,6 +216,15 @@ begin
       Deutsch1.Checked := True
     else
       English1.Checked := True;
+
+    // Theme initialisieren
+    if Settings.Theme = 'dark' then
+      Dunkel1.Checked := True
+    else
+      Hell1.Checked := True;
+
+    // Theme-Farben anwenden
+    ApplyThemeColors;
 
   except
     on E: Exception do
@@ -1444,21 +1458,43 @@ begin
       // Squad-Knoten: Hintergrundfarbe basierend auf Stage
       Stage := FSquads[Info.SquadIndex].Stage;
 
-      // Stage-basierte Hintergrundfarben
-      if Stage = '' then
-        StageColor := clWindow
-      else if Pos('stage_1', Stage) > 0 then
-        StageColor := RGB(230, 240, 255) // Hellblau
-      else if Pos('stage_2', Stage) > 0 then
-        StageColor := RGB(240, 255, 230) // Hellgrün
-      else if Pos('stage_3', Stage) > 0 then
-        StageColor := RGB(255, 245, 230) // Hellorange
-      else if Pos('stage_4', Stage) > 0 then
-        StageColor := RGB(255, 230, 240) // Hellrosa
-      else if Pos('stage_5', Stage) > 0 then
-        StageColor := RGB(240, 230, 255) // Helllila
+      // Stage-basierte Hintergrundfarben (angepasst an Theme)
+      if Settings.Theme = 'dark' then
+      begin
+        // Dark Theme: Dunkle Farben
+        if Stage = '' then
+          StageColor := RGB(45, 45, 48)
+        else if Pos('stage_1', Stage) > 0 then
+          StageColor := RGB(30, 50, 70) // Dunkelblau
+        else if Pos('stage_2', Stage) > 0 then
+          StageColor := RGB(40, 60, 40) // Dunkelgrün
+        else if Pos('stage_3', Stage) > 0 then
+          StageColor := RGB(70, 50, 30) // Dunkelorange
+        else if Pos('stage_4', Stage) > 0 then
+          StageColor := RGB(60, 30, 50) // Dunkelrosa
+        else if Pos('stage_5', Stage) > 0 then
+          StageColor := RGB(50, 40, 70) // Dunkellila
+        else
+          StageColor := RGB(50, 50, 50); // Dunkelgrau für andere Stages
+      end
       else
-        StageColor := RGB(245, 245, 245); // Hellgrau für andere Stages
+      begin
+        // Light Theme: Helle Farben
+        if Stage = '' then
+          StageColor := clWindow
+        else if Pos('stage_1', Stage) > 0 then
+          StageColor := RGB(230, 240, 255) // Hellblau
+        else if Pos('stage_2', Stage) > 0 then
+          StageColor := RGB(240, 255, 230) // Hellgrün
+        else if Pos('stage_3', Stage) > 0 then
+          StageColor := RGB(255, 245, 230) // Hellorange
+        else if Pos('stage_4', Stage) > 0 then
+          StageColor := RGB(255, 230, 240) // Hellrosa
+        else if Pos('stage_5', Stage) > 0 then
+          StageColor := RGB(240, 230, 255) // Helllila
+        else
+          StageColor := RGB(245, 245, 245); // Hellgrau für andere Stages
+      end;
 
       // Nur Hintergrundfarbe setzen
       Canvas.Brush.Color := StageColor;
@@ -1469,7 +1505,7 @@ begin
       R.Right := Sender.ClientWidth;
       Canvas.FillRect(R);
 
-      // Entity-Squads in Blau, Human-Squads in Schwarz
+      // Entity-Squads in Blau, Human-Squads in Schwarz/Weiß (je nach Theme)
       if Length(FSquads[Info.SquadIndex].UnitIds) > 0 then
       begin
         if IsEmptySlot(FSquads[Info.SquadIndex].UnitIds[0]) then
@@ -1478,12 +1514,27 @@ begin
           IsEntity := SameText(FSquads[Info.SquadIndex].UnitKinds[0], 'Entity');
 
         if IsEntity then
-          Canvas.Font.Color := RGB(0, 80, 160) // Dunkelblau für Entity-Squads
+        begin
+          if Settings.Theme = 'dark' then
+            Canvas.Font.Color := RGB(100, 180, 255) // Hellblau für Entity-Squads (Dark Mode)
+          else
+            Canvas.Font.Color := RGB(0, 80, 160); // Dunkelblau für Entity-Squads (Light Mode)
+        end
         else
-          Canvas.Font.Color := clWindowText; // Schwarz für Human-Squads
+        begin
+          if Settings.Theme = 'dark' then
+            Canvas.Font.Color := RGB(220, 220, 220) // Hellgrau für Human-Squads (Dark Mode)
+          else
+            Canvas.Font.Color := clWindowText; // Schwarz für Human-Squads (Light Mode)
+        end;
       end
       else
-        Canvas.Font.Color := clWindowText;
+      begin
+        if Settings.Theme = 'dark' then
+          Canvas.Font.Color := RGB(220, 220, 220)
+        else
+          Canvas.Font.Color := clWindowText;
+      end;
 
       Canvas.Font.Style := [fsBold];
     end
@@ -1499,7 +1550,10 @@ begin
       else
       begin
         // Normale Units
-        Canvas.Font.Color := clWindowText;
+        if Settings.Theme = 'dark' then
+          Canvas.Font.Color := RGB(220, 220, 220)
+        else
+          Canvas.Font.Color := clWindowText;
         Canvas.Font.Style := [];
       end;
     end;
@@ -2132,6 +2186,63 @@ begin
   end;
 end;
 
+procedure TFrmMain.ThemeClick(Sender: TObject);
+var
+  MenuItem: TMenuItem;
+  StyleName: string;
+begin
+  if Sender is TMenuItem then
+  begin
+    MenuItem := TMenuItem(Sender);
+    Settings.Theme := MenuItem.Hint; // 'light' oder 'dark'
+    Settings.Save;
+    UncheckMenu(Design1);
+    MenuItem.Checked := True;
+
+    // VCL Style anwenden
+    if Settings.Theme = 'dark' then
+      StyleName := 'Carbon'
+    else
+      StyleName := 'Amethyst Kamri';
+
+    if TStyleManager.TrySetStyle(StyleName) then
+    begin
+      jachLog.LogInfo('Style gewechselt zu: %s', [StyleName]);
+      ApplyThemeColors;
+    end
+    else
+      jachLog.LogWarning('Style konnte nicht gewechselt werden: %s', [StyleName]);
+  end;
+end;
+
+procedure TFrmMain.ApplyThemeColors;
+begin
+  if Settings.Theme = 'dark' then
+  begin
+    // Dark Theme Farben
+    TreeBase.Color := RGB(45, 45, 48);
+    TreeBase.Font.Color := clWhite;
+    TreeTarget.Color := RGB(45, 45, 48);
+    TreeTarget.Font.Color := clWhite;
+    MemoInfo.Color := RGB(30, 30, 30);
+    MemoInfo.Font.Color := clWhite;
+    ListViewInventory.Color := RGB(45, 45, 48);
+    ListViewInventory.Font.Color := clWhite;
+  end
+  else
+  begin
+    // Light Theme Farben (Standard)
+    TreeBase.Color := clWindow;
+    TreeBase.Font.Color := clWindowText;
+    TreeTarget.Color := clWindow;
+    TreeTarget.Font.Color := clWindowText;
+    MemoInfo.Color := clWindow;
+    MemoInfo.Font.Color := clWindowText;
+    ListViewInventory.Color := clWindow;
+    ListViewInventory.Font.Color := clWindowText;
+  end;
+end;
+
 procedure TFrmMain.ApplyLanguage;
 var
   Lang: TLanguageStrings;
@@ -2166,6 +2277,9 @@ begin
   BackupOptionen1.Caption := Lang.MenuBackupOptions;
   Debuglevel.Caption := Lang.MenuDebugLevel;
   Sprache1.Caption := Lang.MenuLanguage;
+  Design1.Caption := Lang.MenuTheme;
+  Hell1.Caption := Lang.ThemeLight;
+  Dunkel1.Caption := Lang.ThemeDark;
 
   // Sortier-Menü neu aufbauen
   RebuildSortMenu;

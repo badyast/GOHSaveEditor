@@ -3,7 +3,7 @@ unit AppSettings;
 interface
 
 uses
-  System.SysUtils, System.IniFiles, System.IOUtils, Winapi.Windows;
+  System.SysUtils, System.IniFiles, System.IOUtils, Winapi.Windows, System.Win.Registry;
 
 type
   TAppSettings = class
@@ -12,8 +12,10 @@ type
     FBackupFolder: string;
     FMaxBackupCount: Integer;
     FLanguage: string;
+    FTheme: string;
     function GetSettingsFilePath: string;
     function DetectSystemLanguage: string;
+    function DetectSystemTheme: string;
     procedure LoadSettings;
     procedure SaveSettings;
   public
@@ -23,6 +25,7 @@ type
     property BackupFolder: string read FBackupFolder write FBackupFolder;
     property MaxBackupCount: Integer read FMaxBackupCount write FMaxBackupCount;
     property Language: string read FLanguage write FLanguage;
+    property Theme: string read FTheme write FTheme;
 
     procedure Save;
   end;
@@ -68,6 +71,37 @@ begin
     Result := 'en'; // Standard: Englisch für alle anderen Sprachen
 end;
 
+function TAppSettings.DetectSystemTheme: string;
+var
+  Reg: TRegistry;
+  UseLightTheme: Integer;
+begin
+  Result := 'light'; // Fallback: Helles Theme
+
+  Reg := TRegistry.Create(KEY_READ);
+  try
+    Reg.RootKey := HKEY_CURRENT_USER;
+    if Reg.OpenKeyReadOnly('Software\Microsoft\Windows\CurrentVersion\Themes\Personalize') then
+    begin
+      try
+        // AppsUseLightTheme: 1 = Hell, 0 = Dunkel
+        if Reg.ValueExists('AppsUseLightTheme') then
+        begin
+          UseLightTheme := Reg.ReadInteger('AppsUseLightTheme');
+          if UseLightTheme = 0 then
+            Result := 'dark'
+          else
+            Result := 'light';
+        end;
+      finally
+        Reg.CloseKey;
+      end;
+    end;
+  finally
+    Reg.Free;
+  end;
+end;
+
 procedure TAppSettings.LoadSettings;
 var
   SettingsFileExists: Boolean;
@@ -78,18 +112,17 @@ begin
   FBackupFolder := TPath.Combine(ExtractFilePath(ParamStr(0)), 'Backups');
   FMaxBackupCount := -1; // -1 = unbegrenzt
 
-  // Beim ersten Start: Systemsprache erkennen
-  if not SettingsFileExists then
-    FLanguage := DetectSystemLanguage
-  else
-    FLanguage := 'de'; // Fallback für vorhandene settings.ini ohne Language-Eintrag
+  // Standard-Werte: Systemsprache und Theme erkennen
+  FLanguage := DetectSystemLanguage;
+  FTheme := DetectSystemTheme;
 
-  // Aus INI laden
+  // Aus INI laden (überschreibt Defaults wenn vorhanden)
   if SettingsFileExists then
   begin
     FBackupFolder := FIniFile.ReadString('Backup', 'Folder', FBackupFolder);
     FMaxBackupCount := FIniFile.ReadInteger('Backup', 'MaxCount', FMaxBackupCount);
     FLanguage := FIniFile.ReadString('General', 'Language', FLanguage);
+    FTheme := FIniFile.ReadString('General', 'Theme', FTheme);
   end;
 end;
 
@@ -98,6 +131,7 @@ begin
   FIniFile.WriteString('Backup', 'Folder', FBackupFolder);
   FIniFile.WriteInteger('Backup', 'MaxCount', FMaxBackupCount);
   FIniFile.WriteString('General', 'Language', FLanguage);
+  FIniFile.WriteString('General', 'Theme', FTheme);
   FIniFile.UpdateFile;
 end;
 

@@ -32,6 +32,9 @@ type
     MenuBackupOptions: string;
     MenuDebugLevel: string;
     MenuLanguage: string;
+    MenuTheme: string;
+    ThemeLight: string;
+    ThemeDark: string;
     // BackupOptionsForm
     BackupOptionsCaption: string;
     LblBackupFolder: string;
@@ -174,6 +177,9 @@ begin
   Result.MenuBackupOptions := 'Backup-Optionen...';
   Result.MenuDebugLevel := 'Debuglevel';
   Result.MenuLanguage := 'Sprache';
+  Result.MenuTheme := 'Design';
+  Result.ThemeLight := 'Hell';
+  Result.ThemeDark := 'Dunkel';
   Result.BackupOptionsCaption := 'Backup-Optionen';
   Result.LblBackupFolder := 'Backup-Ordner:';
   Result.LblMaxBackups := 'Maximale Anzahl Backups:';
@@ -272,6 +278,9 @@ begin
   Result.MenuBackupOptions := 'Backup Options...';
   Result.MenuDebugLevel := 'Debug Level';
   Result.MenuLanguage := 'Language';
+  Result.MenuTheme := 'Theme';
+  Result.ThemeLight := 'Light';
+  Result.ThemeDark := 'Dark';
   Result.BackupOptionsCaption := 'Backup Options';
   Result.LblBackupFolder := 'Backup folder:';
   Result.LblMaxBackups := 'Maximum backup count:';

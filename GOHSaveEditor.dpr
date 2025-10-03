@@ -37,10 +37,26 @@ begin
     Application.Initialize;
     Application.MainFormOnTaskbar := True;
 
+    // Theme basierend auf Settings laden
+    jachLog.LogDebug('Lade Theme-Einstellungen');
+    if Settings.Theme = 'dark' then
+    begin
+      if TStyleManager.TrySetStyle('Carbon') then
+        jachLog.LogInfo('Dark Theme (Carbon) geladen')
+      else
+        jachLog.LogWarning('Dark Theme konnte nicht geladen werden');
+    end
+    else
+    begin
+      if TStyleManager.TrySetStyle('Amethyst Kamri') then
+        jachLog.LogInfo('Light Theme (Amethyst Kamri) geladen')
+      else
+        jachLog.LogWarning('Light Theme konnte nicht geladen werden');
+    end;
+
     jachLog.LogDebug('Erstelle Hauptformular');
-    TStyleManager.TrySetStyle('Amethyst Kamri');
-  Application.CreateForm(TFrmMain, FrmMain);
-  jachLog.LogInfo('Starte Anwendungs-Message-Loop');
+    Application.CreateForm(TFrmMain, FrmMain);
+    jachLog.LogInfo('Starte Anwendungs-Message-Loop');
     Application.Run;
 
   except

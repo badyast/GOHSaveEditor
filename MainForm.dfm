@@ -239,6 +239,19 @@ object FrmMain: TFrmMain
           OnClick = LanguageClick
         end
       end
+      object Design1: TMenuItem
+        Caption = 'Design'
+        object Hell1: TMenuItem
+          Caption = 'Hell'
+          Hint = 'light'
+          OnClick = ThemeClick
+        end
+        object Dunkel1: TMenuItem
+          Caption = 'Dunkel'
+          Hint = 'dark'
+          OnClick = ThemeClick
+        end
+      end
       object Debuglevel: TMenuItem
         Caption = 'Debuglevel'
         object Off1: TMenuItem
