@@ -1474,6 +1474,8 @@ begin
           StageColor := RGB(60, 30, 50) // Dunkelrosa
         else if Pos('stage_5', Stage) > 0 then
           StageColor := RGB(50, 40, 70) // Dunkellila
+        else if Pos('stage_special', Stage) > 0 then
+          StageColor := RGB(70, 50, 50) // Dunkelrot/Braun
         else
           StageColor := RGB(50, 50, 50); // Dunkelgrau für andere Stages
       end
@@ -1492,6 +1494,8 @@ begin
           StageColor := RGB(255, 230, 240) // Hellrosa
         else if Pos('stage_5', Stage) > 0 then
           StageColor := RGB(240, 230, 255) // Helllila
+        else if Pos('stage_special', Stage) > 0 then
+          StageColor := RGB(255, 240, 240) // Hellrot
         else
           StageColor := RGB(245, 245, 245); // Hellgrau für andere Stages
       end;
