@@ -35,3 +35,7 @@ __recovery/
 # User-specific settings and backups
 settings.ini
 Backups/
+
+# Save game files
+status
+campaign.scn
