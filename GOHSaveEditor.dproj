@@ -146,6 +146,7 @@
         <DCCReference Include="ConquestSave.pas"/>
         <DCCReference Include="Entitys.pas"/>
         <DCCReference Include="AppSettings.pas"/>
+        <DCCReference Include="AppLanguage.pas"/>
         <DCCReference Include="BackupOptionsForm.pas">
             <Form>FrmBackupOptions</Form>
         </DCCReference>

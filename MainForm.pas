@@ -223,6 +223,10 @@ begin
   end;
   // Squad-Sortierung Menü hinzufügen
   AddSortMenuItems;
+
+  // Sortier-Menü initial deaktivieren (kein Save geladen)
+  if Assigned(FSortMenu) then
+    FSortMenu.Enabled := False;
 end;
 
 // ← NEU: Fortschritts-Methoden
@@ -333,6 +337,10 @@ begin
   BtnSwap.Enabled := AEnabled;
   BtnSaveAs.Enabled := AEnabled;
   BtnExportCsv.Enabled := AEnabled;
+
+  // Sortier-Menü aktivieren/deaktivieren
+  if Assigned(FSortMenu) then
+    FSortMenu.Enabled := AEnabled;
 end;
 
 procedure TFrmMain.BlinkForm(AColor: TColor; ACount: Integer);
@@ -1079,7 +1087,9 @@ begin
       ShowStatus(GetLanguageStrings(Settings.Language).StatusErrorLoading);
       jachLog.LogDebug('UI auf Fehler-Zustand gesetzt');
 
-      Application.MessageBox(PChar('Fehler beim Laden: ' + E.Message), 'Fehler',
+      Application.MessageBox(
+        PChar(Format(GetLanguageStrings(Settings.Language).ErrorLoading, [E.Message])),
+        PChar(GetLanguageStrings(Settings.Language).ErrorLoadingTitle),
         MB_ICONERROR);
     end;
   end;
@@ -1705,8 +1715,10 @@ begin
       ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
       jachLog.LogError('SWAP-OPERATION fehlgeschlagen nach %d ms',
         [ElapsedMs], E);
-      Application.MessageBox(PChar('Fehler beim Tauschen: ' + E.Message),
-        'Fehler', MB_ICONERROR);
+      Application.MessageBox(
+        PChar(Format(GetLanguageStrings(Settings.Language).ErrorSwapping, [E.Message])),
+        PChar(GetLanguageStrings(Settings.Language).ErrorSwappingTitle),
+        MB_ICONERROR);
     end;
   end;
 end;
@@ -1839,8 +1851,10 @@ begin
       BlinkForm(RGB(255, 100, 100), 3); // Hellrot
       jachLog.LogDebug('Fehler-Blink gestartet');
 
-      Application.MessageBox(PChar('Fehler beim Speichern: ' + E.Message),
-        'Fehler', MB_ICONERROR);
+      Application.MessageBox(
+        PChar(Format(GetLanguageStrings(Settings.Language).ErrorSaving, [E.Message])),
+        PChar(GetLanguageStrings(Settings.Language).ErrorSavingTitle),
+        MB_ICONERROR);
 
       TThread.CreateAnonymousThread(
         procedure
@@ -1998,8 +2012,10 @@ begin
     begin
       jachLog.LogError('CSV-EXPORT fehlgeschlagen', E);
       ShowStatus(GetLanguageStrings(Settings.Language).StatusErrorCsvExport);
-      Application.MessageBox(PChar('Fehler beim CSV-Export: ' + E.Message),
-        'Fehler', MB_ICONERROR);
+      Application.MessageBox(
+        PChar(Format(GetLanguageStrings(Settings.Language).ErrorCsvExport, [E.Message])),
+        PChar(GetLanguageStrings(Settings.Language).ErrorCsvExportTitle),
+        MB_ICONERROR);
     end;
   end;
 

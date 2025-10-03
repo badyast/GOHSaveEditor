@@ -98,6 +98,17 @@ type
     SortCriteriaAvgVet: string;
     SortCriteriaMaxVet: string;
     SelectBackupFolder: string;
+    // Error messages
+    ErrorLoadingTitle: string;
+    ErrorLoading: string;
+    ErrorSwappingTitle: string;
+    ErrorSwapping: string;
+    ErrorSavingTitle: string;
+    ErrorSaving: string;
+    ErrorCsvExportTitle: string;
+    ErrorCsvExport: string;
+    MsgNoSaveLoadedTitle: string;
+    MsgNoSaveLoaded: string;
   end;
 
 function GetLanguageStrings(const LanguageCode: string): TLanguageStrings;
@@ -225,6 +236,16 @@ begin
   Result.SortCriteriaAvgVet := 'Durchschn. Veteranenstufe';
   Result.SortCriteriaMaxVet := 'Max. Veteranenstufe';
   Result.SelectBackupFolder := 'Backup-Ordner wählen';
+  Result.ErrorLoadingTitle := 'Fehler';
+  Result.ErrorLoading := 'Fehler beim Laden: %s';
+  Result.ErrorSwappingTitle := 'Fehler';
+  Result.ErrorSwapping := 'Fehler beim Tauschen: %s';
+  Result.ErrorSavingTitle := 'Fehler';
+  Result.ErrorSaving := 'Fehler beim Speichern: %s';
+  Result.ErrorCsvExportTitle := 'Fehler';
+  Result.ErrorCsvExport := 'Fehler beim CSV-Export: %s';
+  Result.MsgNoSaveLoadedTitle := 'Kein Save geladen';
+  Result.MsgNoSaveLoaded := 'Bitte zuerst einen Save laden!';
 end;
 
 function GetEnglishStrings: TLanguageStrings;
@@ -313,6 +334,16 @@ begin
   Result.SortCriteriaAvgVet := 'Avg. Veterancy';
   Result.SortCriteriaMaxVet := 'Max. Veterancy';
   Result.SelectBackupFolder := 'Select Backup Folder';
+  Result.ErrorLoadingTitle := 'Error';
+  Result.ErrorLoading := 'Error loading: %s';
+  Result.ErrorSwappingTitle := 'Error';
+  Result.ErrorSwapping := 'Error swapping: %s';
+  Result.ErrorSavingTitle := 'Error';
+  Result.ErrorSaving := 'Error saving: %s';
+  Result.ErrorCsvExportTitle := 'Error';
+  Result.ErrorCsvExport := 'Error exporting CSV: %s';
+  Result.MsgNoSaveLoadedTitle := 'No Save Loaded';
+  Result.MsgNoSaveLoaded := 'Please load a save first!';
 end;
 
 function GetLanguageStrings(const LanguageCode: string): TLanguageStrings;
