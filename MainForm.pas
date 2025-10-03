@@ -2503,11 +2503,31 @@ begin
 end;
 
 function TFrmMain.GetStageGroupDisplay(const Stage: string): string;
+var
+  Lang: TLanguageStrings;
+  GroupName: string;
 begin
+  Lang := GetLanguageStrings(Settings.Language);
+
   if Stage = '' then
-    Result := GetLanguageStrings(Settings.Language).StageNoGroup
+    Result := Lang.StageNoGroup
+  else if Pos('stage_1', Stage) > 0 then
+    GroupName := Lang.GroupPrefix + ' 1'
+  else if Pos('stage_2', Stage) > 0 then
+    GroupName := Lang.GroupPrefix + ' 2'
+  else if Pos('stage_3', Stage) > 0 then
+    GroupName := Lang.GroupPrefix + ' 3'
+  else if Pos('stage_4', Stage) > 0 then
+    GroupName := Lang.GroupPrefix + ' 4'
+  else if Pos('stage_5', Stage) > 0 then
+    GroupName := Lang.GroupPrefix + ' 5'
+  else if Pos('stage_special', Stage) > 0 then
+    GroupName := Lang.GroupSpecial
   else
-    Result := ' [' + Stage + ']';
+    GroupName := Stage; // Fallback für unbekannte Stages
+
+  if Stage <> '' then
+    Result := ' [' + GroupName + ']';
 end;
 
 end.

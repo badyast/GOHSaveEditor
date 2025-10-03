@@ -96,6 +96,8 @@ type
     UnitError: string;
     CsvWriting: string;
     StageNoGroup: string;
+    GroupPrefix: string;
+    GroupSpecial: string;
     SortCriteriaName: string;
     SortCriteriaStage: string;
     SortCriteriaAvgVet: string;
@@ -237,6 +239,8 @@ begin
   Result.UnitError := '(Fehler)';
   Result.CsvWriting := 'Schreibe CSV-Datei...';
   Result.StageNoGroup := ' [Keine Gruppe]';
+  Result.GroupPrefix := 'Gruppe';
+  Result.GroupSpecial := 'Spezial';
   Result.SortCriteriaName := 'Name';
   Result.SortCriteriaStage := 'Gruppe';
   Result.SortCriteriaAvgVet := 'Durchschn. Veteranenstufe';
@@ -338,6 +342,8 @@ begin
   Result.UnitError := '(Error)';
   Result.CsvWriting := 'Writing CSV file...';
   Result.StageNoGroup := ' [No Group]';
+  Result.GroupPrefix := 'Group';
+  Result.GroupSpecial := 'Special';
   Result.SortCriteriaName := 'Name';
   Result.SortCriteriaStage := 'Group';
   Result.SortCriteriaAvgVet := 'Avg. Veterancy';
