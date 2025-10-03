@@ -2187,6 +2187,10 @@ begin
     UncheckMenu(Sprache1);
     MenuItem.Checked := True;
     ApplyLanguage;
+
+    // TreeViews neu aufbauen, um Sprache zu aktualisieren
+    if Assigned(FSquads) and (Length(FSquads) > 0) then
+      PopulateTrees;
   end;
 end;
 
