@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nGitignore: Ignoriere settings.ini und Backups/\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit -m \"$(cat <<''EOF''\nFeature: stage_special Hintergrundfarbe hinzugefügt\n\n- MainForm.pas: Neue Farben für stage_special Squads\n  * Dark Mode: RGB(70, 50, 50) - Dunkelrot/Braun\n  * Light Mode: RGB(255, 240, 240) - Hellrot\n- .claude/project-context.md: Projekt-Kontext für Claude Code\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(powershell.exe:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nFix: TreeViews beim Sprachwechsel neu aufbauen\n\n- MainForm.pas: LanguageClick ruft PopulateTrees auf\n- Behebt Problem, dass \"[Leer]\"/\"{Empty]\" und \"[Keine Gruppe]\"/\"[No Group]\" \n  beim Sprachwechsel nicht aktualisiert wurden\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git commit -m \"$(cat <<''EOF''\nFeature: Stage-Namen zu lesbaren Gruppennamen übersetzen\n\n- AppLanguage.pas: Neue Strings GroupPrefix und GroupSpecial\n  * Deutsch: \"Gruppe\" und \"Spezial\"\n  * English: \"Group\" und \"Special\"\n- MainForm.pas: GetStageGroupDisplay übersetzt stage_1-5 und stage_special\n  * stage_1 → \"Gruppe 1\" / \"Group 1\"\n  * stage_2 → \"Gruppe 2\" / \"Group 2\"\n  * stage_3 → \"Gruppe 3\" / \"Group 3\"\n  * stage_4 → \"Gruppe 4\" / \"Group 4\"\n  * stage_5 → \"Gruppe 5\" / \"Group 5\"\n  * stage_special → \"Spezial\" / \"Special\"\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git push:*)"
     ],
     "deny": [],
