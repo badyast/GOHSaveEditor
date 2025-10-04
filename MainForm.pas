@@ -14,7 +14,7 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants,
   System.Classes, System.Generics.Defaults, TypInfo, System.Math,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
-  Vcl.ComCtrls, Vcl.ExtCtrls, Vcl.Themes,
+  Vcl.ComCtrls, Vcl.ExtCtrls, Vcl.Themes, Vcl.Buttons,
   System.Generics.Collections, System.IOUtils, System.StrUtils, System.DateUtils,
   ConquestSave, Vcl.Menus, Entitys, AppSettings, AppLanguage;
 
@@ -85,10 +85,10 @@ type
     MemoInfo: TMemo;
     TabInventory: TTabSheet;
     ListViewInventory: TListView;
-    BtnExpandBase: TButton;
-    BtnCollapseBase: TButton;
-    BtnExpandTarget: TButton;
-    BtnCollapseTarget: TButton;
+    BtnExpandBase: TSpeedButton;
+    BtnCollapseBase: TSpeedButton;
+    BtnExpandTarget: TSpeedButton;
+    BtnCollapseTarget: TSpeedButton;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
@@ -2281,10 +2281,10 @@ begin
   BtnSwap.Caption := Lang.BtnSwapUnits;
   BtnSaveAs.Caption := Lang.BtnSaveAs;
   BtnExportCsv.Caption := Lang.BtnExportCsv;
-  BtnExpandBase.Caption := Lang.BtnExpandAll;
-  BtnCollapseBase.Caption := Lang.BtnCollapseAll;
-  BtnExpandTarget.Caption := Lang.BtnExpandAll;
-  BtnCollapseTarget.Caption := Lang.BtnCollapseAll;
+  BtnExpandBase.Hint := Lang.BtnExpandAll;
+  BtnCollapseBase.Hint := Lang.BtnCollapseAll;
+  BtnExpandTarget.Hint := Lang.BtnExpandAll;
+  BtnCollapseTarget.Hint := Lang.BtnCollapseAll;
   ChkOnlyHumans.Caption := Lang.ChkOnlyHumans;
   TabGeneral.Caption := Lang.TabGeneral;
   TabInventory.Caption := Lang.TabInventory;

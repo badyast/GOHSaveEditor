@@ -24,14 +24,14 @@ object FrmMain: TFrmMain
   end
   object LblBaseInfo: TLabel
     Left = 16
-    Top = 366
+    Top = 342
     Width = 124
     Height = 15
     Caption = 'Quelle: (keine Auswahl)'
   end
   object LblTargetInfo: TLabel
     Left = 452
-    Top = 368
+    Top = 342
     Width = 109
     Height = 15
     Caption = 'Ziel: (keine Auswahl)'
@@ -71,22 +71,36 @@ object FrmMain: TFrmMain
     TabOrder = 1
     OnChange = TreeBaseChange
   end
-  object BtnExpandBase: TButton
-    Left = 16
-    Top = 342
-    Width = 100
-    Height = 20
-    Caption = 'Alles ausklappen'
-    TabOrder = 10
+  object BtnExpandBase: TSpeedButton
+    Left = 370
+    Top = 36
+    Width = 23
+    Height = 22
+    Hint = 'Alles ausklappen'
+    Caption = '+'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -16
+    Font.Name = 'Segoe UI'
+    Font.Style = [fsBold]
+    ParentFont = False
+    ShowHint = True
     OnClick = BtnExpandBaseClick
   end
-  object BtnCollapseBase: TButton
-    Left = 122
-    Top = 342
-    Width = 100
-    Height = 20
-    Caption = 'Alles einklappen'
-    TabOrder = 11
+  object BtnCollapseBase: TSpeedButton
+    Left = 393
+    Top = 36
+    Width = 23
+    Height = 22
+    Hint = 'Alles einklappen'
+    Caption = '-'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -16
+    Font.Name = 'Segoe UI'
+    Font.Style = [fsBold]
+    ParentFont = False
+    ShowHint = True
     OnClick = BtnCollapseBaseClick
   end
   object TreeTarget: TTreeView
@@ -101,22 +115,36 @@ object FrmMain: TFrmMain
     TabOrder = 2
     OnChange = TreeTargetChange
   end
-  object BtnExpandTarget: TButton
-    Left = 452
-    Top = 342
-    Width = 100
-    Height = 20
-    Caption = 'Alles ausklappen'
-    TabOrder = 12
+  object BtnExpandTarget: TSpeedButton
+    Left = 806
+    Top = 36
+    Width = 23
+    Height = 22
+    Hint = 'Alles ausklappen'
+    Caption = '+'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -16
+    Font.Name = 'Segoe UI'
+    Font.Style = [fsBold]
+    ParentFont = False
+    ShowHint = True
     OnClick = BtnExpandTargetClick
   end
-  object BtnCollapseTarget: TButton
-    Left = 558
-    Top = 342
-    Width = 100
-    Height = 20
-    Caption = 'Alles einklappen'
-    TabOrder = 13
+  object BtnCollapseTarget: TSpeedButton
+    Left = 829
+    Top = 36
+    Width = 23
+    Height = 22
+    Hint = 'Alles einklappen'
+    Caption = '-'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -16
+    Font.Name = 'Segoe UI'
+    Font.Style = [fsBold]
+    ParentFont = False
+    ShowHint = True
     OnClick = BtnCollapseTargetClick
   end
   object BtnTransfer: TButton
@@ -140,7 +168,7 @@ object FrmMain: TFrmMain
     OnClick = BtnSwapClick
   end
   object BtnSaveAs: TButton
-    Left = 444
+    Left = 452
     Top = 398
     Width = 140
     Height = 25
@@ -149,7 +177,7 @@ object FrmMain: TFrmMain
     OnClick = BtnSaveAsClick
   end
   object BtnExportCsv: TButton
-    Left = 604
+    Left = 598
     Top = 398
     Width = 140
     Height = 25
