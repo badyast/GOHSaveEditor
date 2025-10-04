@@ -239,7 +239,7 @@ begin
   Result.SortByAvgVetDesc := 'Nach durchschn. Veteranenstufe (absteigend)';
   Result.SortByMaxVetAsc := 'Nach max. Veteranenstufe (aufsteigend)';
   Result.SortByMaxVetDesc := 'Nach max. Veteranenstufe (absteigend)';
-  Result.UnitEmpty := '[Leer]';
+  Result.UnitEmpty := 'Unbesetzt';
   Result.UnitError := '(Fehler)';
   Result.CsvWriting := 'Schreibe CSV-Datei...';
   Result.StageNoGroup := ' [Keine Gruppe]';
@@ -344,7 +344,7 @@ begin
   Result.SortByAvgVetDesc := 'By Avg. Veterancy (descending)';
   Result.SortByMaxVetAsc := 'By Max. Veterancy (ascending)';
   Result.SortByMaxVetDesc := 'By Max. Veterancy (descending)';
-  Result.UnitEmpty := '[Empty]';
+  Result.UnitEmpty := 'Empty';
   Result.UnitError := '(Error)';
   Result.CsvWriting := 'Writing CSV file...';
   Result.StageNoGroup := ' [No Group]';

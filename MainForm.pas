@@ -1220,7 +1220,7 @@ SquadCaption := SquadCaption + SquadVeterancyText;
 
       if IsEmpty then
       begin
-        UnitCaption := FSquads[I].UnitIds[J] + ' – [Leer]';
+        UnitCaption := GetLanguageStrings(Settings.Language).UnitEmpty;
         // Speziallogik für erste leere Unit eines Squads
         if J = 0 then
           IsEntity := IsEntityUnit(FSquads[I].UnitIds[J], I, J)
