@@ -18,6 +18,8 @@ type
     BtnSwapUnits: string;
     BtnSaveAs: string;
     BtnExportCsv: string;
+    BtnExpandAll: string;
+    BtnCollapseAll: string;
     ChkOnlyHumans: string;
     TabGeneral: string;
     TabInventory: string;
@@ -167,6 +169,8 @@ begin
   Result.BtnSwapUnits := 'Units tauschen '#8596;
   Result.BtnSaveAs := 'Speichern als'#8230;
   Result.BtnExportCsv := 'CSV exportieren'#8230;
+  Result.BtnExpandAll := 'Alles ausklappen';
+  Result.BtnCollapseAll := 'Alles einklappen';
   Result.ChkOnlyHumans := 'Nur Menschen verschieben';
   Result.TabGeneral := 'Allgemein';
   Result.TabInventory := 'Inventar';
@@ -270,6 +274,8 @@ begin
   Result.BtnSwapUnits := 'Swap units '#8596;
   Result.BtnSaveAs := 'Save as'#8230;
   Result.BtnExportCsv := 'Export CSV'#8230;
+  Result.BtnExpandAll := 'Expand all';
+  Result.BtnCollapseAll := 'Collapse all';
   Result.ChkOnlyHumans := 'Move humans only';
   Result.TabGeneral := 'General';
   Result.TabInventory := 'Inventory';

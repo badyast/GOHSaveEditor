@@ -85,6 +85,10 @@ type
     MemoInfo: TMemo;
     TabInventory: TTabSheet;
     ListViewInventory: TListView;
+    BtnExpandBase: TButton;
+    BtnCollapseBase: TButton;
+    BtnExpandTarget: TButton;
+    BtnCollapseTarget: TButton;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
@@ -101,11 +105,16 @@ type
     procedure BackupOptionen1Click(Sender: TObject);
     procedure LanguageClick(Sender: TObject);
     procedure ThemeClick(Sender: TObject);
+    procedure BtnExpandBaseClick(Sender: TObject);
+    procedure BtnCollapseBaseClick(Sender: TObject);
+    procedure BtnExpandTargetClick(Sender: TObject);
+    procedure BtnCollapseTargetClick(Sender: TObject);
 
   private
     FSquads: TArray<TSquadData>; // Live-Datenstruktur
     FSquadsDirty: Boolean; // Änderungen pending?
     FSave: TConquestSave;
+    FCurrentFileName: string; // Aktueller Dateiname
     FAllSquadNames: TArray<string>;
     FSortMenuInfos: TArray<TSortMenuInfo>; // Array für Sortier-Informationen
     FSortMenu: TMenuItem; // Referenz auf Sortier-Menü
@@ -1067,6 +1076,7 @@ begin
 
     jachLog.LogDebug('Rufe FSave.LoadFromSave auf');
     FSave.LoadFromSave(FileName);
+    FCurrentFileName := FileName;
     LblSave.Caption := ExtractFileName(FileName);
     jachLog.LogInfo('ZIP-Datei erfolgreich geladen und extrahiert');
 
@@ -2260,7 +2270,9 @@ begin
   // MainForm
   Caption := Lang.FormCaption;
   if not Assigned(FSave) then
-    LblSave.Caption := Lang.NoFile;
+    LblSave.Caption := '<-----'
+  else if FCurrentFileName <> '' then
+    LblSave.Caption := ExtractFileName(FCurrentFileName);
   LblBaseInfo.Caption := Lang.SourceNoSelection;
   LblTargetInfo.Caption := Lang.TargetNoSelection;
   LblStatus.Caption := Lang.LoadingData;
@@ -2269,6 +2281,10 @@ begin
   BtnSwap.Caption := Lang.BtnSwapUnits;
   BtnSaveAs.Caption := Lang.BtnSaveAs;
   BtnExportCsv.Caption := Lang.BtnExportCsv;
+  BtnExpandBase.Caption := Lang.BtnExpandAll;
+  BtnCollapseBase.Caption := Lang.BtnCollapseAll;
+  BtnExpandTarget.Caption := Lang.BtnExpandAll;
+  BtnCollapseTarget.Caption := Lang.BtnCollapseAll;
   ChkOnlyHumans.Caption := Lang.ChkOnlyHumans;
   TabGeneral.Caption := Lang.TabGeneral;
   TabInventory.Caption := Lang.TabInventory;
@@ -2528,6 +2544,26 @@ begin
 
   if Stage <> '' then
     Result := ' [' + GroupName + ']';
+end;
+
+procedure TFrmMain.BtnExpandBaseClick(Sender: TObject);
+begin
+  TreeBase.FullExpand;
+end;
+
+procedure TFrmMain.BtnCollapseBaseClick(Sender: TObject);
+begin
+  TreeBase.FullCollapse;
+end;
+
+procedure TFrmMain.BtnExpandTargetClick(Sender: TObject);
+begin
+  TreeTarget.FullExpand;
+end;
+
+procedure TFrmMain.BtnCollapseTargetClick(Sender: TObject);
+begin
+  TreeTarget.FullCollapse;
 end;
 
 end.

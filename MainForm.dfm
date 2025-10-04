@@ -2,7 +2,7 @@ object FrmMain: TFrmMain
   Left = 0
   Top = 0
   Caption = 'GOH Savegame Editor'
-  ClientHeight = 640
+  ClientHeight = 670
   ClientWidth = 860
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -20,25 +20,25 @@ object FrmMain: TFrmMain
     Top = 20
     Width = 51
     Height = 15
-    Caption = '(kein File)'
+    Caption = '<-----'
   end
   object LblBaseInfo: TLabel
     Left = 16
-    Top = 344
+    Top = 366
     Width = 124
     Height = 15
     Caption = 'Quelle: (keine Auswahl)'
   end
   object LblTargetInfo: TLabel
-    Left = 444
-    Top = 344
+    Left = 452
+    Top = 368
     Width = 109
     Height = 15
     Caption = 'Ziel: (keine Auswahl)'
   end
   object LblStatus: TLabel
     Left = 16
-    Top = 410
+    Top = 432
     Width = 72
     Height = 15
     Caption = 'Lade Daten...'
@@ -71,11 +71,29 @@ object FrmMain: TFrmMain
     TabOrder = 1
     OnChange = TreeBaseChange
   end
+  object BtnExpandBase: TButton
+    Left = 16
+    Top = 342
+    Width = 100
+    Height = 20
+    Caption = 'Alles ausklappen'
+    TabOrder = 10
+    OnClick = BtnExpandBaseClick
+  end
+  object BtnCollapseBase: TButton
+    Left = 122
+    Top = 342
+    Width = 100
+    Height = 20
+    Caption = 'Alles einklappen'
+    TabOrder = 11
+    OnClick = BtnCollapseBaseClick
+  end
   object TreeTarget: TTreeView
     Left = 452
     Top = 56
     Width = 400
-    Height = 282
+    Height = 280
     HideSelection = False
     Indent = 19
     ReadOnly = True
@@ -83,9 +101,27 @@ object FrmMain: TFrmMain
     TabOrder = 2
     OnChange = TreeTargetChange
   end
+  object BtnExpandTarget: TButton
+    Left = 452
+    Top = 342
+    Width = 100
+    Height = 20
+    Caption = 'Alles ausklappen'
+    TabOrder = 12
+    OnClick = BtnExpandTargetClick
+  end
+  object BtnCollapseTarget: TButton
+    Left = 558
+    Top = 342
+    Width = 100
+    Height = 20
+    Caption = 'Alles einklappen'
+    TabOrder = 13
+    OnClick = BtnCollapseTargetClick
+  end
   object BtnTransfer: TButton
     Left = 16
-    Top = 376
+    Top = 398
     Width = 140
     Height = 25
     Caption = '(Transfer deaktiviert)'
@@ -96,7 +132,7 @@ object FrmMain: TFrmMain
   end
   object BtnSwap: TButton
     Left = 168
-    Top = 376
+    Top = 398
     Width = 140
     Height = 25
     Caption = 'Units tauschen '#8596
@@ -105,7 +141,7 @@ object FrmMain: TFrmMain
   end
   object BtnSaveAs: TButton
     Left = 444
-    Top = 376
+    Top = 398
     Width = 140
     Height = 25
     Caption = 'Speichern als'#8230
@@ -114,7 +150,7 @@ object FrmMain: TFrmMain
   end
   object BtnExportCsv: TButton
     Left = 604
-    Top = 376
+    Top = 398
     Width = 140
     Height = 25
     Caption = 'CSV exportieren'#8230
@@ -134,7 +170,7 @@ object FrmMain: TFrmMain
   end
   object ProgressBar1: TProgressBar
     Left = 344
-    Top = 407
+    Top = 429
     Width = 400
     Height = 17
     TabOrder = 8
@@ -142,9 +178,9 @@ object FrmMain: TFrmMain
   end
   object PageControl1: TPageControl
     Left = 0
-    Top = 448
+    Top = 458
     Width = 860
-    Height = 192
+    Height = 212
     ActivePage = TabGeneral
     Align = alBottom
     TabOrder = 9
@@ -154,7 +190,7 @@ object FrmMain: TFrmMain
         Left = 0
         Top = 0
         Width = 852
-        Height = 162
+        Height = 182
         Align = alClient
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clWindowText
@@ -174,7 +210,7 @@ object FrmMain: TFrmMain
         Left = 0
         Top = 0
         Width = 852
-        Height = 162
+        Height = 182
         Align = alClient
         Columns = <
           item
