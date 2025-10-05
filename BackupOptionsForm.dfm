@@ -51,18 +51,27 @@ object FrmBackupOptions: TFrmBackupOptions
     object EdtBackupFolder: TEdit
       Left = 16
       Top = 37
-      Width = 385
+      Width = 365
       Height = 23
       TabOrder = 0
     end
     object BtnBrowse: TButton
-      Left = 407
+      Left = 387
       Top = 35
-      Width = 75
+      Width = 95
       Height = 25
       Caption = 'Durchsuchen...'
       TabOrder = 1
       OnClick = BtnBrowseClick
+    end
+    object BtnOpenFolder: TButton
+      Left = 387
+      Top = 66
+      Width = 95
+      Height = 25
+      Caption = 'Ordner '#246'ffnen'
+      TabOrder = 4
+      OnClick = BtnOpenFolderClick
     end
     object EdtMaxBackups: TEdit
       Left = 16

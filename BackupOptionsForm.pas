@@ -12,6 +12,7 @@ type
     LblBackupFolder: TLabel;
     EdtBackupFolder: TEdit;
     BtnBrowse: TButton;
+    BtnOpenFolder: TButton;
     LblMaxBackups: TLabel;
     EdtMaxBackups: TEdit;
     ChkUnlimited: TCheckBox;
@@ -21,6 +22,7 @@ type
     LblInfo: TLabel;
     procedure FormCreate(Sender: TObject);
     procedure BtnBrowseClick(Sender: TObject);
+    procedure BtnOpenFolderClick(Sender: TObject);
     procedure ChkUnlimitedClick(Sender: TObject);
     procedure BtnOKClick(Sender: TObject);
     procedure BtnCancelClick(Sender: TObject);
@@ -37,7 +39,7 @@ var
 implementation
 
 uses
-  Vcl.FileCtrl;
+  Vcl.FileCtrl, Winapi.ShellAPI;
 
 {$R *.dfm}
 
@@ -57,6 +59,7 @@ begin
   LblBackupFolder.Caption := Lang.LblBackupFolder;
   LblMaxBackups.Caption := Lang.LblMaxBackups;
   BtnBrowse.Caption := Lang.BtnBrowse;
+  BtnOpenFolder.Caption := Lang.BtnOpenFolder;
   ChkUnlimited.Caption := Lang.ChkUnlimited;
   LblInfo.Caption := Lang.BackupInfo;
   BtnOK.Caption := Lang.BtnOK;
@@ -110,6 +113,26 @@ begin
   Dir := EdtBackupFolder.Text;
   if SelectDirectory(GetLanguageStrings(Settings.Language).SelectBackupFolder, '', Dir, [sdNewUI, sdNewFolder]) then
     EdtBackupFolder.Text := Dir;
+end;
+
+procedure TFrmBackupOptions.BtnOpenFolderClick(Sender: TObject);
+var
+  FolderPath: string;
+begin
+  FolderPath := EdtBackupFolder.Text;
+
+  if not DirectoryExists(FolderPath) then
+  begin
+    if MessageDlg(GetLanguageStrings(Settings.Language).MsgBackupFolderNotExist,
+                  mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+    begin
+      ForceDirectories(FolderPath);
+    end
+    else
+      Exit;
+  end;
+
+  ShellExecute(0, 'open', PChar(FolderPath), nil, nil, SW_SHOWNORMAL);
 end;
 
 procedure TFrmBackupOptions.ChkUnlimitedClick(Sender: TObject);

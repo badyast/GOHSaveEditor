@@ -42,6 +42,7 @@ type
     LblBackupFolder: string;
     LblMaxBackups: string;
     BtnBrowse: string;
+    BtnOpenFolder: string;
     ChkUnlimited: string;
     BackupInfo: string;
     BtnOK: string;
@@ -116,6 +117,7 @@ type
     ErrorCsvExport: string;
     MsgNoSaveLoadedTitle: string;
     MsgNoSaveLoaded: string;
+    MsgBackupFolderNotExist: string;
   end;
 
 function GetLanguageStrings(const LanguageCode: string): TLanguageStrings;
@@ -190,6 +192,7 @@ begin
   Result.LblBackupFolder := 'Backup-Ordner:';
   Result.LblMaxBackups := 'Maximale Anzahl Backups:';
   Result.BtnBrowse := 'Durchsuchen...';
+  Result.BtnOpenFolder := 'Ordner öffnen';
   Result.ChkUnlimited := 'Unbegrenzt (alle behalten)';
   Result.BackupInfo := 'Backups werden automatisch beim Überschreiben eines Saves erstellt. '+
     'Ältere Backups werden gelöscht, wenn die maximale Anzahl überschritten wird.';
@@ -260,6 +263,7 @@ begin
   Result.ErrorCsvExport := 'Fehler beim CSV-Export: %s';
   Result.MsgNoSaveLoadedTitle := 'Kein Save geladen';
   Result.MsgNoSaveLoaded := 'Bitte zuerst einen Save laden!';
+  Result.MsgBackupFolderNotExist := 'Der Backup-Ordner existiert noch nicht. Möchten Sie ihn jetzt erstellen?';
 end;
 
 function GetEnglishStrings: TLanguageStrings;
@@ -295,6 +299,7 @@ begin
   Result.LblBackupFolder := 'Backup folder:';
   Result.LblMaxBackups := 'Maximum backup count:';
   Result.BtnBrowse := 'Browse...';
+  Result.BtnOpenFolder := 'Open folder';
   Result.ChkUnlimited := 'Unlimited (keep all)';
   Result.BackupInfo := 'Backups are automatically created when overwriting a save file. '+
     'Older backups will be deleted when the maximum count is exceeded.';
@@ -365,6 +370,7 @@ begin
   Result.ErrorCsvExport := 'Error exporting CSV: %s';
   Result.MsgNoSaveLoadedTitle := 'No Save Loaded';
   Result.MsgNoSaveLoaded := 'Please load a save first!';
+  Result.MsgBackupFolderNotExist := 'The backup folder does not exist yet. Would you like to create it now?';
 end;
 
 function GetLanguageStrings(const LanguageCode: string): TLanguageStrings;
