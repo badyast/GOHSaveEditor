@@ -108,11 +108,9 @@ var
 begin
   SettingsFileExists := TFile.Exists(GetSettingsFilePath);
 
-  // Standard-Werte
+  // Standard-Werte setzen
   FBackupFolder := TPath.Combine(ExtractFilePath(ParamStr(0)), 'Backups');
   FMaxBackupCount := -1; // -1 = unbegrenzt
-
-  // Standard-Werte: Systemsprache und Theme erkennen
   FLanguage := DetectSystemLanguage;
   FTheme := DetectSystemTheme;
 

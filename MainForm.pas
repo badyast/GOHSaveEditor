@@ -32,8 +32,8 @@ type
     Name: string;
     Stage: string;
     UnitIds: TArray<string>;
-    UnitNames: TArray<string>; // ← NEU: Gecachte Namen
-    UnitVeterancies: TArray<Integer>; // ← NEU: Gecachte Veteranenstufen
+    UnitNames: TArray<string>;
+    UnitVeterancies: TArray<Integer>;
     UnitKinds: TArray<string>;
     MaxVeterancy: Integer;
   end;
@@ -252,7 +252,6 @@ begin
     FSortMenu.Enabled := False;
 end;
 
-// ← NEU: Fortschritts-Methoden
 procedure TFrmMain.ShowProgress(const AMessage: string; AMaxValue: Integer = 0);
 begin
   LblStatus.Caption := AMessage;
@@ -1233,11 +1232,10 @@ SquadCaption := SquadCaption + SquadVeterancyText;
       end
       else
       begin
-        IsEntity := SameText(FSquads[I].UnitKinds[J], 'Entity'); // ← Aus Cache!
+        IsEntity := SameText(FSquads[I].UnitKinds[J], 'Entity');
         if ChkOnlyHumans.Checked and IsEntity then
           Continue;
 
-        // CACHED DATEN verwenden - KEIN PARSING!
         UnitCaption := FSquads[I].UnitIds[J];
         if FSquads[I].UnitNames[J] <> '' then
           UnitCaption := UnitCaption + ' – ' + FSquads[I].UnitNames[J];

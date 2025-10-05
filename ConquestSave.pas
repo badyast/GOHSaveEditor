@@ -39,8 +39,8 @@ type
     Score: Double;
     InfantryKills: Integer;
     MID: Integer;
-    NameId1: Integer; // Erste NameId
-    NameId2: Integer; // Zweite NameId
+    NameId1: Integer;
+    NameId2: Integer;
     LastItem: string;
     LastThrowItem: string;
     FsmState: string;
