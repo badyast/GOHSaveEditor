@@ -16,7 +16,7 @@ uses
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
   Vcl.ComCtrls, Vcl.ExtCtrls, Vcl.Themes, Vcl.Buttons,
   System.Generics.Collections, System.IOUtils, System.StrUtils, System.DateUtils,
-  ConquestSave, Vcl.Menus, Entitys, AppSettings, AppLanguage;
+  ConquestSave, Vcl.Menus, Entitys, AppSettings, AppLanguage, AboutForm, HelpForm;
 
 type
   TNodeKind = (nkSquad, nkUnit);
@@ -89,6 +89,9 @@ type
     BtnCollapseBase: TSpeedButton;
     BtnExpandTarget: TSpeedButton;
     BtnCollapseTarget: TSpeedButton;
+    Hilfe1: TMenuItem;
+    Hilfe2: TMenuItem;
+    About1: TMenuItem;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
@@ -109,6 +112,8 @@ type
     procedure BtnCollapseBaseClick(Sender: TObject);
     procedure BtnExpandTargetClick(Sender: TObject);
     procedure BtnCollapseTargetClick(Sender: TObject);
+    procedure Hilfe2Click(Sender: TObject);
+    procedure About1Click(Sender: TObject);
 
   private
     FSquads: TArray<TSquadData>; // Live-Datenstruktur
@@ -2487,6 +2492,24 @@ begin
   end;
 
   MainMenu1.Items.Add(FSortMenu);
+
+  // Hilfe-Menü nach Sortier-Menü hinzufügen
+  if not Assigned(Hilfe1) then
+  begin
+    Hilfe1 := TMenuItem.Create(Self);
+    Hilfe2 := TMenuItem.Create(Self);
+    About1 := TMenuItem.Create(Self);
+
+    Hilfe1.Caption := '?';
+    Hilfe2.Caption := 'Hilfe';
+    Hilfe2.OnClick := Hilfe2Click;
+    About1.Caption := 'Über...';
+    About1.OnClick := About1Click;
+
+    Hilfe1.Add(Hilfe2);
+    Hilfe1.Add(About1);
+    MainMenu1.Items.Add(Hilfe1);
+  end;
 end;
 
 procedure TFrmMain.RebuildSortMenu;
@@ -2513,6 +2536,13 @@ begin
           Settings.Language);
       end;
     end;
+  end;
+
+  // Hilfe-Menü aktualisieren
+  if Assigned(Hilfe1) then
+  begin
+    Hilfe2.Caption := GetLanguageStrings(Settings.Language).MenuHelpContent;
+    About1.Caption := GetLanguageStrings(Settings.Language).MenuAbout;
   end;
 end;
 
@@ -2562,6 +2592,16 @@ end;
 procedure TFrmMain.BtnCollapseTargetClick(Sender: TObject);
 begin
   TreeTarget.FullCollapse;
+end;
+
+procedure TFrmMain.Hilfe2Click(Sender: TObject);
+begin
+  HelpForm.TFrmHelp.Create(Self).ShowModal;
+end;
+
+procedure TFrmMain.About1Click(Sender: TObject);
+begin
+  AboutForm.TFrmAbout.Create(Self).ShowModal;
 end;
 
 end.

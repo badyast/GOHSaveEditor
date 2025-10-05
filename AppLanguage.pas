@@ -118,6 +118,24 @@ type
     MsgNoSaveLoadedTitle: string;
     MsgNoSaveLoaded: string;
     MsgBackupFolderNotExist: string;
+    // Help menu
+    MenuHelp: string;
+    MenuHelpContent: string;
+    MenuAbout: string;
+    // AboutForm
+    AboutCaption: string;
+    AboutVersion: string;
+    AboutAuthor: string;
+    AboutCoffee: string;
+    AboutLicense: string;
+    AboutDevelopment: string;
+    BtnClose: string;
+    // HelpForm
+    HelpCaption: string;
+    HelpTitle: string;
+    HelpStatus: string;
+    HelpIssues: string;
+    HelpDisclaimer: string;
   end;
 
 function GetLanguageStrings(const LanguageCode: string): TLanguageStrings;
@@ -264,6 +282,23 @@ begin
   Result.MsgNoSaveLoadedTitle := 'Kein Save geladen';
   Result.MsgNoSaveLoaded := 'Bitte zuerst einen Save laden!';
   Result.MsgBackupFolderNotExist := 'Der Backup-Ordner existiert noch nicht. Möchten Sie ihn jetzt erstellen?';
+  Result.MenuHelp := '?';
+  Result.MenuHelpContent := 'Hilfe';
+  Result.MenuAbout := 'Über...';
+  Result.AboutCaption := 'Über';
+  Result.AboutVersion := 'Version:';
+  Result.AboutAuthor := 'Autor:';
+  Result.AboutCoffee := '☕ Buy me a Coffee (freiwillig)';
+  Result.AboutLicense := 'Lizenz: MIT - Hobby-Projekt';
+  Result.AboutDevelopment := 'Entwicklung mit Unterstützung von Claude (Anthropic) - einem KI-Assistenten für Code und Design.';
+  Result.BtnClose := 'Schließen';
+  Result.HelpCaption := 'Hilfe';
+  Result.HelpTitle := 'Hilfe';
+  Result.HelpStatus := 'Dieses Tool befindet sich in aktiver Entwicklung. Fehler oder Inkompatibilitäten können auftreten. '+
+    'Die Nutzung geschieht auf eigene Verantwortung.';
+  Result.HelpIssues := 'Fehler, Verbesserungsvorschläge oder Fragen? Bitte erstelle ein Issue auf GitHub:';
+  Result.HelpDisclaimer := 'GOH Savegame Editor ist ein inoffizielles Fan-Projekt und steht in keiner Verbindung zu '+
+    'Digitalmindsoft/Barbedwire Studios. Alle Rechte an Gates of Hell: Ostfront liegen bei deren jeweiligen Rechteinhabern.';
 end;
 
 function GetEnglishStrings: TLanguageStrings;
@@ -371,6 +406,23 @@ begin
   Result.MsgNoSaveLoadedTitle := 'No Save Loaded';
   Result.MsgNoSaveLoaded := 'Please load a save first!';
   Result.MsgBackupFolderNotExist := 'The backup folder does not exist yet. Would you like to create it now?';
+  Result.MenuHelp := '?';
+  Result.MenuHelpContent := 'Help';
+  Result.MenuAbout := 'About...';
+  Result.AboutCaption := 'About';
+  Result.AboutVersion := 'Version:';
+  Result.AboutAuthor := 'Author:';
+  Result.AboutCoffee := '☕ Buy me a Coffee (optional)';
+  Result.AboutLicense := 'License: MIT - Hobby Project';
+  Result.AboutDevelopment := 'Developed with support from Claude (Anthropic) - an AI assistant for code and design.';
+  Result.BtnClose := 'Close';
+  Result.HelpCaption := 'Help';
+  Result.HelpTitle := 'Help';
+  Result.HelpStatus := 'This tool is in active development. Errors or incompatibilities may occur. '+
+    'Use at your own risk.';
+  Result.HelpIssues := 'Bugs, suggestions or questions? Please create an issue on GitHub:';
+  Result.HelpDisclaimer := 'GOH Savegame Editor is an unofficial fan project and is not affiliated with '+
+    'Digitalmindsoft/Barbedwire Studios. All rights to Gates of Hell: Ostfront belong to their respective owners.';
 end;
 
 function GetLanguageStrings(const LanguageCode: string): TLanguageStrings;
