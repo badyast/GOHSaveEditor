@@ -6,41 +6,23 @@
 
 ## Build-Prozess
 
-### Automatischer Build über PowerShell-Script
-Da die Community Edition von Delphi 12.1 eingeschränkte Command-Line-Tools hat, verwenden wir ein Wrapper-Script:
-
-```powershell
-C:\scripts\build-delphi.ps1 GOHSaveEditor.dproj
-```
-
-**Parameter:**
-- `-ProjectFile`: Pfad zur .dproj Datei (erforderlich)
-- `-Config`: Debug oder Release (Standard: Debug)
-- `-Platform`: Win32 oder Win64 (Standard: Win32)
-
-**Beispiele:**
-```powershell
-# Debug-Build (Standard)
-C:\scripts\build-delphi.ps1 GOHSaveEditor.dproj
-
-# Release-Build für Win64
-C:\scripts\build-delphi.ps1 GOHSaveEditor.dproj -Config Release -Platform Win64
-```
-
-### Manueller Build in der IDE
+### Build in der IDE
 1. Öffne `GOHSaveEditor.dproj` in Delphi
-2. Wähle die gewünschte Build-Konfiguration (Debug/Release)
-3. Drücke F9 zum Kompilieren und Ausführen oder Strg+F9 nur zum Kompilieren
+2. Wähle die gewünschte Build-Konfiguration:
+   - **Debug**: Für Entwicklung mit Debug-Informationen
+   - **Release**: Für optimierte Produktions-Builds
+3. Wähle die Zielplattform:
+   - **Win32**: 32-Bit Windows
+   - **Win64**: 64-Bit Windows (empfohlen)
+4. Kompiliere das Projekt:
+   - **F9**: Kompilieren und Ausführen
+   - **Strg+F9**: Nur Kompilieren (ohne Ausführen)
+   - **Shift+F9**: Projekt neu kompilieren (vollständiger Rebuild)
 
-## Build-Script Details
-Das `build-delphi.ps1` Script:
-- Startet die Delphi IDE (`bds.exe`) im Headless Build-Modus
-- Parameter: `-pDelphi -b -ns` (Build, No Splash)
-- Zeigt automatisch das Error-Log an, falls Fehler auftreten
-- Wartet auf Completion des Builds
-
-## Automatische Builds nach Code-Änderungen
-Bei Verwendung von Claude Code wird nach jeder Code-Änderung automatisch ein Build durchgeführt, um Kompilierfehler frühzeitig zu erkennen.
+### Build-Ausgabe
+Die kompilierte .exe findest du nach dem Build in:
+- **Win32**: `Win32\Release\GOHSaveEditor.exe`
+- **Win64**: `Win64\Release\GOHSaveEditor.exe`
 
 ## Bekannte Compiler-Hinweise
 Folgende Hinweise/Warnungen können erscheinen und sind unkritisch:
