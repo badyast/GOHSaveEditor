@@ -14,10 +14,34 @@ Die Nutzung geschieht auf eigene Verantwortung.
 ---
 
 ## ✨ Funktionen
-- Savegames öffnen und bearbeiten  
-- Einheiten und Squads anpassen  
-- Änderungen speichern und ins Spiel zurückladen  
-- Unterstützung für Spielstände der Dynamischen Kampagnen  
+
+### 🎮 Squad-Management
+- **Einheiten verschieben**: Verschiebe Units zwischen Squads per Drag & Drop-ähnlicher Auswahl
+- **Nur-Menschen-Filter**: Filtere gezielt menschliche Einheiten beim Transfer
+- **Unit-Swap**: Tausche zwei Einheiten mit einem Klick
+- **Squad-Sortierung**: Sortiere deine Squads nach Namen, Gruppe oder Veteranenstufe
+- **Übersichtliche Darstellung**: TreeView mit Gruppierung nach Stages (Gruppe 1-5, Spezial)
+
+### 💾 Backup & Sicherheit
+- **Automatische Backups**: Jeder überschriebene Save wird automatisch gesichert
+- **Konfigurierbar**: Wähle Backup-Ordner und maximale Anzahl der Backups
+- **Schneller Zugriff**: Öffne deinen Backup-Ordner direkt aus der App
+
+### 📊 Export & Analyse
+- **CSV-Export**: Exportiere alle Squads mit Einheiten-Details
+- **Inventar-Ansicht**: Zeige alle Items im Savegame an
+- **Unit-Informationen**: Detaillierte Anzeige von Veteranenstufe, Kills, Ausrüstung
+
+### 🎨 Benutzeroberfläche
+- **Mehrsprachigkeit**: Deutsch und Englisch
+- **Dark/Light Mode**: Automatische System-Theme-Erkennung oder manuelle Auswahl
+- **Expand/Collapse**: Schnelles Ein- und Ausklappen aller TreeView-Knoten
+- **Hilfe-System**: Integrierte Hilfe mit Links zu GitHub Issues
+
+### 🛠️ Weitere Features
+- **Debug-Level**: Konfigurierbare Logging-Stufen für Fehlersuche
+- **Settings-Verwaltung**: Alle Einstellungen werden persistent gespeichert
+- **Entity-Datenbank**: Umfangreiche Datenbank bekannter Unit-Typen
 
 ---
 
@@ -29,10 +53,22 @@ Die Nutzung geschieht auf eigene Verantwortung.
 ---
 
 ## 🚀 Verwendung
-1. Savegame auswählen  
-2. Gewünschte Änderungen durchführen  
-3. Speichern klicken  
-4. Das Savegame im Spiel laden  
+
+### Grundlegende Schritte
+1. **Save laden**: Klicke auf "Save laden..." und wähle dein Savegame aus
+2. **Einheiten bearbeiten**:
+   - Wähle eine Unit in der Quell-TreeView (links)
+   - Wähle einen Ziel-Squad in der Ziel-TreeView (rechts)
+   - Klicke "Units tauschen ↔" zum Verschieben
+3. **Speichern**: Klicke "Speichern als..." um deine Änderungen zu sichern
+4. **Im Spiel laden**: Lade das bearbeitete Savegame in Gates of Hell
+
+### Tipps
+- Nutze **"Sortieren"** im Menü, um deine Squads zu organisieren
+- Aktiviere **"Nur Menschen verschieben"** um NPCs zu ignorieren
+- Verwende **"Expand/Collapse" Buttons** (+ / -) für bessere Übersicht
+- Öffne **Optionen → Backup-Optionen** um dein Backup-System anzupassen
+- Wechsle zu **Dark Mode** über Optionen → Design → Dunkel
 
 ---
 
@@ -59,6 +95,21 @@ Es wurde unabhängig entwickelt und steht in **keiner Verbindung** zu [Digitalmi
 
 ---
 
+## 📝 Changelog
+
+Siehe [CHANGELOG.md](CHANGELOG.md) für eine detaillierte Liste aller Änderungen.
+
+**Aktuelle Version**: 0.9.0 Beta (Erstes öffentliches Release)
+
+---
+
+## 🔧 Für Entwickler
+
+Möchtest du am Projekt mitarbeiten oder es selbst kompilieren?
+Siehe [BUILDING.md](BUILDING.md) für eine Anleitung zum Build-Prozess.
+
+---
+
 ## 📜 Lizenz
-Dieses Projekt steht unter der [MIT-Lizenz](LICENSE).  
+Dieses Projekt steht unter der [MIT-Lizenz](LICENSE).
 Das bedeutet: Du darfst den Code frei nutzen, verändern und weitergeben – solange ein Hinweis auf den Urheber enthalten bleibt.
