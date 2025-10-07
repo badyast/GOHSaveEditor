@@ -5,6 +5,10 @@
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 [![Buy Me a Coffee](https://img.shields.io/badge/☕-Buy%20me%20a%20coffee-orange.svg)](https://www.buymeacoffee.com/badyast)
 
+**🇩🇪 Deutsche Version** | **[🇬🇧 English Version](README.en.md)**
+
+---
+
 Ein inoffizieller Editor für Spielstände von **Gates of Hell: Ostfront**.  
 Mit diesem Tool kannst du deine gespeicherten Kampagnen bequem laden, ändern und wieder speichern.  
 
