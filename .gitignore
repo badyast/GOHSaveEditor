@@ -39,3 +39,6 @@ Backups/
 # Save game files
 status
 campaign.scn
+sign-exe.ps1
+sign-with-trust.ps1
+*.ps1
