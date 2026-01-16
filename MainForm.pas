@@ -1652,6 +1652,7 @@ procedure TFrmMain.BtnSwapClick(Sender: TObject);
 var
   A, B: TNodeInfo;
   BaseSquadIndex, TargetSquadIndex: Integer;
+  UnitIdA, UnitIdB: string;
   UnitIndexA, UnitIndexB: Integer;
   I: Integer;
   StartTime: TDateTime;
@@ -1682,6 +1683,10 @@ begin
 
   BaseSquadIndex := A.SquadIndex;
   TargetSquadIndex := B.SquadIndex;
+  // UnitIds in lokale Variablen speichern, da A und B nach
+  // UpdateTreeViewsFromSquads ungültig werden (Use-After-Free vermeiden)
+  UnitIdA := A.UnitId;
+  UnitIdB := B.UnitId;
 
   // Validierungen mit detailliertem Logging
   if ChkOnlyHumans.Checked and IsValidUnit(A.UnitId) and IsEntityUnit(A.UnitId)
@@ -1764,8 +1769,8 @@ begin
     UpdateTreeViewsFromSquads;
 
     jachLog.LogDebug('Stelle UI-Fokus wieder her');
-    RestoreFocusToUnit(TreeBase, BaseSquadIndex, A.UnitId);
-    RestoreFocusToUnit(TreeTarget, TargetSquadIndex, B.UnitId);
+    RestoreFocusToUnit(TreeBase, BaseSquadIndex, UnitIdA);
+    RestoreFocusToUnit(TreeTarget, TargetSquadIndex, UnitIdB);
 
     // Info-Panel aktualisieren
     if Assigned(SelectedUnitInfo(TreeBase)) then

@@ -1,10 +1,14 @@
 ﻿program GOHSaveEditor;
 
+{$R *.dres}
+
 uses
   ujachLogAuto,
   ujachLogMgr,
+  ujachLogToDisk,
   Vcl.Forms,
   System.SysUtils,
+  System.IOUtils,
   MainForm in 'MainForm.pas' {FrmMain},
   ConquestSave in 'ConquestSave.pas',
   Entitys in 'Entitys.pas',
@@ -17,6 +21,9 @@ uses
 {$R *.res}
 
 begin
+  // Log-Datei im EXE-Verzeichnis speichern
+  GetLogDiskWriter.BasePath := ExtractFilePath(ParamStr(0));
+
   // Startup-Logging
   jachLog.LogLevel[jachLog.DefaultTopic] := TLogLevel.llAll;
   jachLog.LogInfo('=== GOH Save Editor gestartet ===');
