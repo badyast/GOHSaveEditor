@@ -15,6 +15,9 @@ uses
   AppSettings in 'AppSettings.pas',
   AppLanguage in 'AppLanguage.pas',
   BackupOptionsForm in 'BackupOptionsForm.pas' {FrmBackupOptions},
+  SquadPresets in 'SquadPresets.pas',
+  PresetSaveForm in 'PresetSaveForm.pas' {FrmPresetSave},
+  PresetLoadForm in 'PresetLoadForm.pas' {FrmPresetLoad},
   Vcl.Themes,
   Vcl.Styles;
 

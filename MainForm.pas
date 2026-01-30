@@ -16,7 +16,8 @@ uses
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
   Vcl.ComCtrls, Vcl.ExtCtrls, Vcl.Themes, Vcl.Buttons,
   System.Generics.Collections, System.IOUtils, System.StrUtils, System.DateUtils,
-  ConquestSave, Vcl.Menus, Entitys, AppSettings, AppLanguage, AboutForm, HelpForm;
+  ConquestSave, Vcl.Menus, Entitys, AppSettings, AppLanguage, AboutForm, HelpForm,
+  SquadPresets;
 
 type
   TNodeKind = (nkSquad, nkUnit);
@@ -123,6 +124,9 @@ type
     FAllSquadNames: TArray<string>;
     FSortMenuInfos: TArray<TSortMenuInfo>; // Array für Sortier-Informationen
     FSortMenu: TMenuItem; // Referenz auf Sortier-Menü
+    FPresetsMenu: TMenuItem; // Referenz auf Vorlagen-Menü
+    FMenuSavePreset: TMenuItem;
+    FMenuLoadPreset: TMenuItem;
     procedure SetControlsEnabled(AEnabled: Boolean);
     procedure BlinkForm(AColor: TColor; ACount: Integer);
     procedure CreateBackup(const FilePath: string);
@@ -167,6 +171,13 @@ type
     function GetStageGroupDisplay(const Stage: string): string;
     procedure ApplyLanguage;
     procedure ApplyThemeColors;
+    // Preset-Feature
+    procedure AddPresetsMenu;
+    procedure RebuildPresetsMenu;
+    procedure SavePresetClick(Sender: TObject);
+    procedure LoadPresetClick(Sender: TObject);
+    procedure ApplyPreset(const Preset: TSquadPreset);
+    procedure SetSquadStage(SquadIndex: Integer; const NewStage: string);
 
   public
 
@@ -180,7 +191,7 @@ var
 implementation
 
 uses
-  BackupOptionsForm;
+  BackupOptionsForm, PresetSaveForm, PresetLoadForm;
 
 {$R *.dfm}
 
@@ -252,9 +263,14 @@ begin
   // Squad-Sortierung Menü hinzufügen
   AddSortMenuItems;
 
-  // Sortier-Menü initial deaktivieren (kein Save geladen)
+  // Vorlagen-Menü hinzufügen
+  AddPresetsMenu;
+
+  // Menüs initial deaktivieren (kein Save geladen)
   if Assigned(FSortMenu) then
     FSortMenu.Enabled := False;
+  if Assigned(FPresetsMenu) then
+    FPresetsMenu.Enabled := False;
 end;
 
 procedure TFrmMain.ShowProgress(const AMessage: string; AMaxValue: Integer = 0);
@@ -368,6 +384,10 @@ begin
   // Sortier-Menü aktivieren/deaktivieren
   if Assigned(FSortMenu) then
     FSortMenu.Enabled := AEnabled;
+
+  // Vorlagen-Menü aktivieren/deaktivieren
+  if Assigned(FPresetsMenu) then
+    FPresetsMenu.Enabled := AEnabled;
 end;
 
 procedure TFrmMain.BlinkForm(AColor: TColor; ACount: Integer);
@@ -2549,6 +2569,9 @@ begin
     Hilfe2.Caption := GetLanguageStrings(Settings.Language).MenuHelpContent;
     About1.Caption := GetLanguageStrings(Settings.Language).MenuAbout;
   end;
+
+  // Vorlagen-Menü aktualisieren
+  RebuildPresetsMenu;
 end;
 
 function TFrmMain.GetStageGroupDisplay(const Stage: string): string;
@@ -2607,6 +2630,311 @@ end;
 procedure TFrmMain.About1Click(Sender: TObject);
 begin
   AboutForm.TFrmAbout.Create(Self).ShowModal;
+end;
+
+// ============================================================================
+// Preset-Feature Implementierung
+// ============================================================================
+
+procedure TFrmMain.AddPresetsMenu;
+var
+  Lang: TLanguageStrings;
+begin
+  Lang := GetLanguageStrings(Settings.Language);
+
+  FPresetsMenu := TMenuItem.Create(Self);
+  FPresetsMenu.Caption := Lang.MenuPresets;
+
+  FMenuSavePreset := TMenuItem.Create(Self);
+  FMenuSavePreset.Caption := Lang.MenuSavePreset;
+  FMenuSavePreset.OnClick := SavePresetClick;
+  FPresetsMenu.Add(FMenuSavePreset);
+
+  FMenuLoadPreset := TMenuItem.Create(Self);
+  FMenuLoadPreset.Caption := Lang.MenuLoadPreset;
+  FMenuLoadPreset.OnClick := LoadPresetClick;
+  FPresetsMenu.Add(FMenuLoadPreset);
+
+  MainMenu1.Items.Add(FPresetsMenu);
+end;
+
+procedure TFrmMain.RebuildPresetsMenu;
+var
+  Lang: TLanguageStrings;
+begin
+  if not Assigned(FPresetsMenu) then
+    Exit;
+
+  Lang := GetLanguageStrings(Settings.Language);
+  FPresetsMenu.Caption := Lang.MenuPresets;
+
+  if Assigned(FMenuSavePreset) then
+    FMenuSavePreset.Caption := Lang.MenuSavePreset;
+  if Assigned(FMenuLoadPreset) then
+    FMenuLoadPreset.Caption := Lang.MenuLoadPreset;
+end;
+
+procedure TFrmMain.SavePresetClick(Sender: TObject);
+var
+  Dlg: TFrmPresetSave;
+  Groups: TArray<PresetSaveForm.TGroupInfo>;
+  I, Count: Integer;
+  HasStage: array[1..5] of Boolean;
+  HasSpecial: Boolean;
+  StageCount: array[1..5] of Integer;
+  SpecialCount: Integer;
+  Preset: TSquadPreset;
+  StageFilter: string;
+  FileName: string;
+  Lang: TLanguageStrings;
+begin
+  Lang := GetLanguageStrings(Settings.Language);
+
+  // Zaehlen welche Stages existieren
+  for I := 1 to 5 do
+  begin
+    HasStage[I] := False;
+    StageCount[I] := 0;
+  end;
+  HasSpecial := False;
+  SpecialCount := 0;
+
+  for I := 0 to Length(FSquads) - 1 do
+  begin
+    if Pos('stage_1', FSquads[I].Stage) > 0 then begin HasStage[1] := True; Inc(StageCount[1]); end
+    else if Pos('stage_2', FSquads[I].Stage) > 0 then begin HasStage[2] := True; Inc(StageCount[2]); end
+    else if Pos('stage_3', FSquads[I].Stage) > 0 then begin HasStage[3] := True; Inc(StageCount[3]); end
+    else if Pos('stage_4', FSquads[I].Stage) > 0 then begin HasStage[4] := True; Inc(StageCount[4]); end
+    else if Pos('stage_5', FSquads[I].Stage) > 0 then begin HasStage[5] := True; Inc(StageCount[5]); end
+    else if Pos('stage_special', FSquads[I].Stage) > 0 then begin HasSpecial := True; Inc(SpecialCount); end;
+  end;
+
+  // Gruppen-Array aufbauen
+  SetLength(Groups, 0);
+  for I := 1 to 5 do
+  begin
+    if HasStage[I] then
+    begin
+      SetLength(Groups, Length(Groups) + 1);
+      Groups[High(Groups)].StageFilter := 'stage_' + IntToStr(I);
+      Groups[High(Groups)].DisplayName := Lang.GroupPrefix + ' ' + IntToStr(I);
+      Groups[High(Groups)].SquadCount := StageCount[I];
+    end;
+  end;
+  if HasSpecial then
+  begin
+    SetLength(Groups, Length(Groups) + 1);
+    Groups[High(Groups)].StageFilter := 'stage_special';
+    Groups[High(Groups)].DisplayName := Lang.GroupSpecial;
+    Groups[High(Groups)].SquadCount := SpecialCount;
+  end;
+
+  if Length(Groups) = 0 then
+  begin
+    Application.MessageBox(PChar('Keine Gruppen gefunden.'), PChar(Lang.PresetSaveCaption), MB_ICONWARNING);
+    Exit;
+  end;
+
+  Dlg := TFrmPresetSave.Create(Self);
+  try
+    Dlg.SetAvailableGroups(Groups);
+
+    if Dlg.ShowModal = mrOK then
+    begin
+      StageFilter := Dlg.GetSelectedStageFilter;
+
+      // Squad-Namen fuer diese Stage sammeln
+      Preset.Name := Dlg.GetPresetName;
+      Preset.Created := Now;
+      Preset.StageFilter := StageFilter;
+
+      Count := 0;
+      for I := 0 to Length(FSquads) - 1 do
+        if Pos(StageFilter, FSquads[I].Stage) > 0 then
+          Inc(Count);
+
+      SetLength(Preset.SquadNames, Count);
+      Count := 0;
+      for I := 0 to Length(FSquads) - 1 do
+      begin
+        if Pos(StageFilter, FSquads[I].Stage) > 0 then
+        begin
+          Preset.SquadNames[Count] := FSquads[I].Name;
+          Inc(Count);
+        end;
+      end;
+
+      try
+        FileName := GetPresetManager.SavePreset(Preset);
+        ShowStatus(Format(Lang.PresetSavedSuccess, [TPath.GetFileName(FileName)]));
+        jachLog.LogInfo('Preset gespeichert: %s (%d Squads)', [FileName, Length(Preset.SquadNames)]);
+      except
+        on E: Exception do
+        begin
+          jachLog.LogError('Fehler beim Speichern des Presets', E);
+          Application.MessageBox(PChar(E.Message), PChar(Lang.ErrorSavingTitle), MB_ICONERROR);
+        end;
+      end;
+    end;
+  finally
+    Dlg.Free;
+  end;
+end;
+
+procedure TFrmMain.LoadPresetClick(Sender: TObject);
+var
+  Dlg: TFrmPresetLoad;
+  Preset: TSquadPreset;
+  Lang: TLanguageStrings;
+begin
+  Lang := GetLanguageStrings(Settings.Language);
+
+  if Length(GetPresetManager.GetPresetList) = 0 then
+  begin
+    Application.MessageBox(PChar(Lang.PresetNoPresetsFound), PChar(Lang.PresetLoadCaption), MB_ICONINFORMATION);
+    Exit;
+  end;
+
+  Dlg := TFrmPresetLoad.Create(Self);
+  try
+    if Dlg.ShowModal = mrOK then
+    begin
+      if Dlg.HasValidSelection then
+      begin
+        Preset := Dlg.GetSelectedPreset;
+
+        try
+          ApplyPreset(Preset);
+          LoadSquadsFromSave; // Daten neu laden
+          UpdateTreeViewsFromSquads;
+
+          ShowStatus(Format(Lang.PresetLoadedSuccess, [Preset.Name]));
+          jachLog.LogInfo('Preset geladen: %s', [Preset.Name]);
+        except
+          on E: Exception do
+          begin
+            jachLog.LogError('Fehler beim Anwenden des Presets', E);
+            Application.MessageBox(PChar(Lang.PresetLoadError + ': ' + E.Message),
+              PChar(Lang.ErrorLoadingTitle), MB_ICONERROR);
+          end;
+        end;
+      end;
+    end;
+  finally
+    Dlg.Free;
+  end;
+end;
+
+procedure TFrmMain.SetSquadStage(SquadIndex: Integer; const NewStage: string);
+var
+  OldLine, NewLine: string;
+  OldStage: string;
+  QuoteCount: Integer;
+  StageStart, StageEnd: Integer;
+  I: Integer;
+begin
+  OldLine := FSave.GetSquadLine(SquadIndex);
+  OldStage := FSquads[SquadIndex].Stage;
+
+  // Squad-Zeilen-Format: {"squadname" "stage" unit1 unit2 ...}
+  // Wir muessen den Inhalt zwischen dem 3. und 4. Anfuehrungszeichen ersetzen
+  //
+  // Beispiel: {"blitz3_6" "stage_3" 0x8324}
+  //            ^1       ^2 ^3     ^4
+  // Quote 1: Anfang Squad-Name
+  // Quote 2: Ende Squad-Name
+  // Quote 3: Anfang Stage (StageStart)
+  // Quote 4: Ende Stage (StageEnd)
+
+  QuoteCount := 0;
+  StageStart := 0;
+  StageEnd := 0;
+
+  for I := 1 to Length(OldLine) do
+  begin
+    if OldLine[I] = '"' then
+    begin
+      Inc(QuoteCount);
+      if QuoteCount = 3 then
+        StageStart := I
+      else if QuoteCount = 4 then
+      begin
+        StageEnd := I;
+        Break;
+      end;
+    end;
+  end;
+
+  if (StageStart > 0) and (StageEnd > StageStart) then
+  begin
+    // Neue Zeile zusammenbauen:
+    // Alles bis inkl. 3. Quote + neuer Stage + alles ab 4. Quote
+    NewLine := Copy(OldLine, 1, StageStart) + NewStage + Copy(OldLine, StageEnd, MaxInt);
+  end
+  else
+  begin
+    jachLog.LogWarning('SetSquadStage: Unerwartetes Zeilenformat: %s', [OldLine]);
+    NewLine := OldLine;
+  end;
+
+  FSave.SetSquadLine(SquadIndex, NewLine);
+  FSquads[SquadIndex].Stage := NewStage;
+
+  jachLog.LogDebug('SetSquadStage: Squad %d Stage geaendert von "%s" zu "%s"',
+    [SquadIndex, OldStage, NewStage]);
+end;
+
+procedure TFrmMain.ApplyPreset(const Preset: TSquadPreset);
+var
+  I, J: Integer;
+  SquadFound: Boolean;
+  AlreadyAssigned: TList<Integer>;
+begin
+  jachLog.LogInfo('ApplyPreset: Wende Preset "%s" an (Stage: %s, %d Squads)',
+    [Preset.Name, Preset.StageFilter, Length(Preset.SquadNames)]);
+
+  AlreadyAssigned := TList<Integer>.Create;
+  try
+    // Schritt 1: Allen Squads mit diesem StageFilter den Stage entfernen
+    for I := 0 to Length(FSquads) - 1 do
+    begin
+      if Pos(Preset.StageFilter, FSquads[I].Stage) > 0 then
+      begin
+        jachLog.LogDebug('Entferne Stage von Squad %d (%s)', [I, FSquads[I].Name]);
+        SetSquadStage(I, '');
+      end;
+    end;
+
+    // Schritt 2: Allen Squads aus dem Preset den StageFilter zuweisen
+    // Bei gleichnamigen Squads: Jeden nur einmal zuweisen
+    for I := 0 to Length(Preset.SquadNames) - 1 do
+    begin
+      SquadFound := False;
+      for J := 0 to Length(FSquads) - 1 do
+      begin
+        // Pruefen ob dieser Squad schon zugewiesen wurde
+        if AlreadyAssigned.Contains(J) then
+          Continue;
+
+        if SameText(FSquads[J].Name, Preset.SquadNames[I]) then
+        begin
+          jachLog.LogDebug('Setze Stage "%s" fuer Squad %d (%s)',
+            [Preset.StageFilter, J, FSquads[J].Name]);
+          SetSquadStage(J, Preset.StageFilter);
+          AlreadyAssigned.Add(J);
+          SquadFound := True;
+          Break;
+        end;
+      end;
+
+      if not SquadFound then
+        jachLog.LogWarning('Squad "%s" aus Preset nicht gefunden', [Preset.SquadNames[I]]);
+    end;
+  finally
+    AlreadyAssigned.Free;
+  end;
+
+  jachLog.LogInfo('ApplyPreset: Fertig');
 end;
 
 end.

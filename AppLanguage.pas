@@ -136,6 +136,25 @@ type
     HelpStatus: string;
     HelpIssues: string;
     HelpDisclaimer: string;
+    // Preset Feature
+    MenuPresets: string;
+    MenuSavePreset: string;
+    MenuLoadPreset: string;
+    PresetSaveCaption: string;
+    PresetLoadCaption: string;
+    PresetNameLabel: string;
+    PresetGroupLabel: string;
+    PresetSaveInfo: string;
+    PresetCreatedLabel: string;
+    PresetGroupInfo: string;
+    PresetSquadCountLabel: string;
+    PresetLoadButton: string;
+    PresetDeleteButton: string;
+    PresetDeleteConfirm: string;
+    PresetLoadError: string;
+    PresetSavedSuccess: string;
+    PresetLoadedSuccess: string;
+    PresetNoPresetsFound: string;
   end;
 
 function GetLanguageStrings(const LanguageCode: string): TLanguageStrings;
@@ -299,6 +318,25 @@ begin
   Result.HelpIssues := 'Fehler, Verbesserungsvorschläge oder Fragen? Bitte erstelle ein Issue auf GitHub:';
   Result.HelpDisclaimer := 'GOH Savegame Editor ist ein inoffizielles Fan-Projekt und steht in keiner Verbindung zu '+
     'Digitalmindsoft/Barbedwire Studios. Alle Rechte an Gates of Hell: Ostfront liegen bei deren jeweiligen Rechteinhabern.';
+  // Preset Feature
+  Result.MenuPresets := 'Vorlagen';
+  Result.MenuSavePreset := 'Gruppe speichern...';
+  Result.MenuLoadPreset := 'Vorlage laden...';
+  Result.PresetSaveCaption := 'Gruppenvorlage speichern';
+  Result.PresetLoadCaption := 'Vorlage laden';
+  Result.PresetNameLabel := 'Vorlagenname:';
+  Result.PresetGroupLabel := 'Gruppe:';
+  Result.PresetSaveInfo := '%d Squads werden gespeichert';
+  Result.PresetCreatedLabel := 'Erstellt:';
+  Result.PresetGroupInfo := 'Gruppe: %s';
+  Result.PresetSquadCountLabel := '%d Squads:';
+  Result.PresetLoadButton := 'Laden';
+  Result.PresetDeleteButton := 'Löschen';
+  Result.PresetDeleteConfirm := 'Vorlage "%s" wirklich löschen?';
+  Result.PresetLoadError := 'Fehler beim Laden';
+  Result.PresetSavedSuccess := 'Vorlage gespeichert: %s';
+  Result.PresetLoadedSuccess := 'Vorlage geladen: %s';
+  Result.PresetNoPresetsFound := 'Keine Vorlagen gefunden.';
 end;
 
 function GetEnglishStrings: TLanguageStrings;
@@ -423,6 +461,25 @@ begin
   Result.HelpIssues := 'Bugs, suggestions or questions? Please create an issue on GitHub:';
   Result.HelpDisclaimer := 'GOH Savegame Editor is an unofficial fan project and is not affiliated with '+
     'Digitalmindsoft/Barbedwire Studios. All rights to Gates of Hell: Ostfront belong to their respective owners.';
+  // Preset Feature
+  Result.MenuPresets := 'Presets';
+  Result.MenuSavePreset := 'Save group...';
+  Result.MenuLoadPreset := 'Load preset...';
+  Result.PresetSaveCaption := 'Save Group Preset';
+  Result.PresetLoadCaption := 'Load Preset';
+  Result.PresetNameLabel := 'Preset name:';
+  Result.PresetGroupLabel := 'Group:';
+  Result.PresetSaveInfo := '%d squads will be saved';
+  Result.PresetCreatedLabel := 'Created:';
+  Result.PresetGroupInfo := 'Group: %s';
+  Result.PresetSquadCountLabel := '%d squads:';
+  Result.PresetLoadButton := 'Load';
+  Result.PresetDeleteButton := 'Delete';
+  Result.PresetDeleteConfirm := 'Really delete preset "%s"?';
+  Result.PresetLoadError := 'Error loading';
+  Result.PresetSavedSuccess := 'Preset saved: %s';
+  Result.PresetLoadedSuccess := 'Preset loaded: %s';
+  Result.PresetNoPresetsFound := 'No presets found.';
 end;
 
 function GetLanguageStrings(const LanguageCode: string): TLanguageStrings;
