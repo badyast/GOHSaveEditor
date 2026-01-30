@@ -1280,11 +1280,6 @@ SquadCaption := SquadCaption + SquadVeterancyText;
 
   // TreeTarget durch Kopieren erstellen
   CopyTreeStructure(TreeBase, TreeTarget);
-
-  if TreeBase.Items.Count > 0 then
-    TreeBase.Items[0].Expand(True);
-  if TreeTarget.Items.Count > 0 then
-    TreeTarget.Items[0].Expand(True);
 end;
 
 procedure TFrmMain.ClearInfoPanel;
@@ -2655,7 +2650,8 @@ begin
   FMenuLoadPreset.OnClick := LoadPresetClick;
   FPresetsMenu.Add(FMenuLoadPreset);
 
-  MainMenu1.Items.Add(FPresetsMenu);
+  // Vor dem Hilfe-Menue ("?") einfuegen, das ist das letzte Element
+  MainMenu1.Items.Insert(MainMenu1.Items.Count - 1, FPresetsMenu);
 end;
 
 procedure TFrmMain.RebuildPresetsMenu;

@@ -974,7 +974,13 @@ begin
 
           scStage:
             begin
-              Result := CompareText(StageA, StageB);
+              // Leere Stages ans Ende sortieren
+              if (StageA = '') and (StageB <> '') then
+                Result := 1  // A (leer) kommt nach B
+              else if (StageA <> '') and (StageB = '') then
+                Result := -1 // A kommt vor B (leer)
+              else
+                Result := CompareText(StageA, StageB);
               // Sekundäre Sortierung nach Name wenn Stage gleich
               if Result = 0 then
                 Result := CompareText(NameA, NameB);
