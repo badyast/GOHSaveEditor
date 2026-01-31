@@ -93,6 +93,12 @@ type
     Hilfe1: TMenuItem;
     Hilfe2: TMenuItem;
     About1: TMenuItem;
+    PanelTop: TPanel;
+    PanelBottom: TPanel;
+    PanelClient: TPanel;
+    PanelLeft: TPanel;
+    PanelRight: TPanel;
+    Splitter1: TSplitter;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
@@ -115,6 +121,7 @@ type
     procedure BtnCollapseTargetClick(Sender: TObject);
     procedure Hilfe2Click(Sender: TObject);
     procedure About1Click(Sender: TObject);
+    procedure FormResize(Sender: TObject);
 
   private
     FSquads: TArray<TSquadData>; // Live-Datenstruktur
@@ -369,6 +376,12 @@ begin
       // Nicht re-raisen, da wir beim Beenden sind
     end;
   end;
+end;
+
+procedure TFrmMain.FormResize(Sender: TObject);
+begin
+  // Linkes Panel auf 50% der Client-Breite setzen
+  PanelLeft.Width := PanelClient.ClientWidth div 2;
 end;
 
 procedure TFrmMain.SetControlsEnabled(AEnabled: Boolean);
