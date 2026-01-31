@@ -28,6 +28,7 @@ type
     function LoadPreset(const FileName: string): TSquadPreset;
     function GetPresetList: TArray<string>;
     procedure DeletePreset(const FileName: string);
+    procedure RenamePreset(const FileName: string; const NewName: string);
 
     property PresetsFolder: string read GetPresetsFolder;
   end;
@@ -166,6 +167,26 @@ procedure TSquadPresetManager.DeletePreset(const FileName: string);
 begin
   if TFile.Exists(FileName) then
     TFile.Delete(FileName);
+end;
+
+procedure TSquadPresetManager.RenamePreset(const FileName: string; const NewName: string);
+var
+  Preset: TSquadPreset;
+  JSON: TJSONObject;
+begin
+  if not TFile.Exists(FileName) then
+    Exit;
+
+  // Load, update name, save back
+  Preset := LoadPreset(FileName);
+  Preset.Name := NewName;
+
+  JSON := PresetToJSON(Preset);
+  try
+    TFile.WriteAllText(FileName, JSON.Format(2), TEncoding.UTF8);
+  finally
+    JSON.Free;
+  end;
 end;
 
 initialization

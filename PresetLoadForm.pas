@@ -5,7 +5,7 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes,
   Vcl.Graphics, Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls,
-  System.IOUtils, System.DateUtils,
+  Vcl.Menus, System.IOUtils, System.DateUtils,
   AppSettings, AppLanguage, SquadPresets;
 
 type
@@ -21,12 +21,15 @@ type
     BtnLoad: TButton;
     BtnDelete: TButton;
     BtnCancel: TButton;
+    PopupMenuPreset: TPopupMenu;
+    MenuItemRename: TMenuItem;
     procedure FormCreate(Sender: TObject);
     procedure ListBoxPresetsClick(Sender: TObject);
     procedure ListBoxPresetsDblClick(Sender: TObject);
     procedure BtnLoadClick(Sender: TObject);
     procedure BtnDeleteClick(Sender: TObject);
     procedure BtnCancelClick(Sender: TObject);
+    procedure MenuItemRenameClick(Sender: TObject);
   private
     FPresetFiles: TArray<string>;
     FSelectedPreset: TSquadPreset;
@@ -63,6 +66,7 @@ begin
   BtnLoad.Caption := Lang.PresetLoadButton;
   BtnDelete.Caption := Lang.PresetDeleteButton;
   BtnCancel.Caption := Lang.BtnCancel;
+  MenuItemRename.Caption := Lang.PresetRenameButton;
 end;
 
 function TFrmPresetLoad.StageFilterToDisplayName(const StageFilter: string): string;
@@ -208,6 +212,29 @@ end;
 procedure TFrmPresetLoad.BtnCancelClick(Sender: TObject);
 begin
   ModalResult := mrCancel;
+end;
+
+procedure TFrmPresetLoad.MenuItemRenameClick(Sender: TObject);
+var
+  Index: Integer;
+  Lang: TLanguageStrings;
+  NewName: string;
+begin
+  Lang := GetLanguageStrings(Settings.Language);
+  Index := ListBoxPresets.ItemIndex;
+
+  if (Index < 0) or (Index >= Length(FPresetFiles)) then
+    Exit;
+
+  NewName := ListBoxPresets.Items[Index];
+  if InputQuery(Lang.PresetRenameButton, Lang.PresetRenamePrompt, NewName) then
+  begin
+    if (NewName <> '') and (NewName <> ListBoxPresets.Items[Index]) then
+    begin
+      GetPresetManager.RenamePreset(FPresetFiles[Index], NewName);
+      LoadPresetList;
+    end;
+  end;
 end;
 
 function TFrmPresetLoad.GetSelectedPreset: TSquadPreset;

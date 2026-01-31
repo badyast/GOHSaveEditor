@@ -28,6 +28,7 @@ object FrmPresetLoad: TFrmPresetLoad
       Width = 164
       Height = 284
       ItemHeight = 15
+      PopupMenu = PopupMenuPreset
       TabOrder = 0
       OnClick = ListBoxPresetsClick
       OnDblClick = ListBoxPresetsDblClick
@@ -122,6 +123,14 @@ object FrmPresetLoad: TFrmPresetLoad
       Caption = 'Abbrechen'
       TabOrder = 2
       OnClick = BtnCancelClick
+    end
+  end
+  object PopupMenuPreset: TPopupMenu
+    Left = 88
+    Top = 152
+    object MenuItemRename: TMenuItem
+      Caption = 'Umbenennen'
+      OnClick = MenuItemRenameClick
     end
   end
 end

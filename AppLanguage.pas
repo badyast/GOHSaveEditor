@@ -151,6 +151,8 @@ type
     PresetLoadButton: string;
     PresetDeleteButton: string;
     PresetDeleteConfirm: string;
+    PresetRenameButton: string;
+    PresetRenamePrompt: string;
     PresetLoadError: string;
     PresetSavedSuccess: string;
     PresetLoadedSuccess: string;
@@ -333,6 +335,8 @@ begin
   Result.PresetLoadButton := 'Laden';
   Result.PresetDeleteButton := 'Löschen';
   Result.PresetDeleteConfirm := 'Vorlage "%s" wirklich löschen?';
+  Result.PresetRenameButton := 'Umbenennen';
+  Result.PresetRenamePrompt := 'Neuer Name für die Vorlage:';
   Result.PresetLoadError := 'Fehler beim Laden';
   Result.PresetSavedSuccess := 'Vorlage gespeichert: %s';
   Result.PresetLoadedSuccess := 'Vorlage geladen: %s';
@@ -476,6 +480,8 @@ begin
   Result.PresetLoadButton := 'Load';
   Result.PresetDeleteButton := 'Delete';
   Result.PresetDeleteConfirm := 'Really delete preset "%s"?';
+  Result.PresetRenameButton := 'Rename';
+  Result.PresetRenamePrompt := 'New name for the preset:';
   Result.PresetLoadError := 'Error loading';
   Result.PresetSavedSuccess := 'Preset saved: %s';
   Result.PresetLoadedSuccess := 'Preset loaded: %s';
