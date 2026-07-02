@@ -108,7 +108,9 @@ type
     function GetUnitDetails(const UnitId: string): TUnitDetails;
     function ExtractUnitTypeName(const UnitId: string): string;
 
-    // Edits
+    // Mod-Liste
+    function GetMods: TArray<string>;
+    procedure SetMods(const Mods: TArray<string>);
 
     // Paths
     property SaveFile: string read FSaveFile;
@@ -297,17 +299,19 @@ begin
     end;
   end;
 
-  // Status-Datei aktualisieren falls Dateiname geändert
+  // Status-Datei aktualisieren und speichern
   var
     NewCampaignName: string;
   NewCampaignName := ExtractCampaignNameFromPath(DestFile);
-  if Assigned(FStatus) and (ExtractCampaignNameFromPath(FSaveFile) <>
-    NewCampaignName) then
+  if Assigned(FStatus) then
   begin
-    jachLog.LogInfo
-      ('Dateiname geändert - aktualisiere Status-Datei von "%s" auf "%s"',
-      [ExtractCampaignNameFromPath(FSaveFile), NewCampaignName]);
-    UpdateCampaignNameInStatus(NewCampaignName);
+    if ExtractCampaignNameFromPath(FSaveFile) <> NewCampaignName then
+    begin
+      jachLog.LogInfo
+        ('Dateiname geändert - aktualisiere Status-Datei von "%s" auf "%s"',
+        [ExtractCampaignNameFromPath(FSaveFile), NewCampaignName]);
+      UpdateCampaignNameInStatus(NewCampaignName);
+    end;
     SaveStatusFile;
   end;
 
@@ -1111,6 +1115,94 @@ begin
     FStatus.SaveToFile(FStatusPath, TUTF8Encoding.Create(False));
     jachLog.LogDebug('Status-Datei gespeichert: %s', [FStatusPath]);
   end;
+end;
+
+function TConquestSave.GetMods: TArray<string>;
+var
+  I: Integer;
+  Line: string;
+  InModsBlock: Boolean;
+  Mods: TList<string>;
+  M: TMatch;
+begin
+  Mods := TList<string>.Create;
+  try
+    if not Assigned(FStatus) then
+      Exit(Mods.ToArray);
+
+    InModsBlock := False;
+    for I := 0 to FStatus.Count - 1 do
+    begin
+      Line := Trim(FStatus[I]);
+      if Line = '{mods' then
+      begin
+        InModsBlock := True;
+        Continue;
+      end;
+      if InModsBlock then
+      begin
+        if Line = '}' then
+          Break;
+        M := TRegEx.Match(Line, '"([^"]+)"');
+        if M.Success then
+          Mods.Add(M.Groups[1].Value);
+      end;
+    end;
+    Result := Mods.ToArray;
+  finally
+    Mods.Free;
+  end;
+end;
+
+procedure TConquestSave.SetMods(const Mods: TArray<string>);
+var
+  I, ModsStart, ModsEnd, InsertPos: Integer;
+  Line: string;
+  InModsBlock: Boolean;
+  ModEntry: string;
+begin
+  if not Assigned(FStatus) then
+    Exit;
+
+  ModsStart := -1;
+  ModsEnd := -1;
+  InsertPos := 3;
+  InModsBlock := False;
+
+  for I := 0 to FStatus.Count - 1 do
+  begin
+    Line := Trim(FStatus[I]);
+    if (InsertPos = 3) and Line.StartsWith('{timestamp') then
+      InsertPos := I + 1;
+    if Line = '{mods' then
+    begin
+      ModsStart := I;
+      InModsBlock := True;
+      Continue;
+    end;
+    if InModsBlock and (Line = '}') then
+    begin
+      ModsEnd := I;
+      InModsBlock := False;
+    end;
+  end;
+
+  // Remove existing block
+  if ModsStart >= 0 then
+    for I := ModsEnd downto ModsStart do
+      FStatus.Delete(I);
+
+  if Length(Mods) = 0 then
+    Exit;
+
+  // Insert new block (reverse order so lines end up in correct sequence)
+  FStatus.Insert(InsertPos, #9'}');
+  for I := Length(Mods) - 1 downto 0 do
+  begin
+    ModEntry := Mods[I];
+    FStatus.Insert(InsertPos, #9#9'"' + ModEntry + '"');
+  end;
+  FStatus.Insert(InsertPos, #9'{mods');
 end;
 
 function TConquestSave.ExtractUnitTypeName(const UnitId: string): string;

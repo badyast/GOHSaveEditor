@@ -162,6 +162,15 @@ type
     MsgCloseUnsavedTitle: string;
     ChkDontShowAgain: string;
     MenuWarnOnClose: string;
+    // Mods editor
+    MenuEditMods: string;
+    ModsCaption: string;
+    ModsInfo: string;
+    ModsAdd: string;
+    ModsRemove: string;
+    ModsAddPromptTitle: string;
+    ModsAddPromptText: string;
+    ModsSaved: string;
   end;
 
 function GetLanguageStrings(const LanguageCode: string): TLanguageStrings;
@@ -351,6 +360,15 @@ begin
   Result.MsgCloseUnsavedTitle := 'Ungespeicherte '#196'nderungen';
   Result.ChkDontShowAgain := 'Diese Meldung nicht mehr anzeigen';
   Result.MenuWarnOnClose := 'Warnung bei ungespeicherten '#196'nderungen';
+  // Mods editor
+  Result.MenuEditMods := 'Aktive Mods bearbeiten...';
+  Result.ModsCaption := 'Aktive Mods bearbeiten';
+  Result.ModsInfo := 'Liste der aktiven Steam-Workshop-Mods. Format: mod_XXXXXXXX:0';
+  Result.ModsAdd := 'Hinzuf'#252'gen...';
+  Result.ModsRemove := 'Entfernen';
+  Result.ModsAddPromptTitle := 'Mod hinzuf'#252'gen';
+  Result.ModsAddPromptText := 'Steam Workshop ID (nur Zahlen, z.B. 3215727318):';
+  Result.ModsSaved := 'Mod-Liste gespeichert.';
 end;
 
 function GetEnglishStrings: TLanguageStrings;
@@ -501,6 +519,15 @@ begin
   Result.MsgCloseUnsavedTitle := 'Unsaved Changes';
   Result.ChkDontShowAgain := 'Don''t show this message again';
   Result.MenuWarnOnClose := 'Warn on unsaved changes when closing';
+  // Mods editor
+  Result.MenuEditMods := 'Edit Active Mods...';
+  Result.ModsCaption := 'Edit Active Mods';
+  Result.ModsInfo := 'List of active Steam Workshop mods. Format: mod_XXXXXXXX:0';
+  Result.ModsAdd := 'Add...';
+  Result.ModsRemove := 'Remove';
+  Result.ModsAddPromptTitle := 'Add Mod';
+  Result.ModsAddPromptText := 'Steam Workshop ID (numbers only, e.g. 3215727318):';
+  Result.ModsSaved := 'Mod list saved.';
 end;
 
 function GetLanguageStrings(const LanguageCode: string): TLanguageStrings;

@@ -18,6 +18,7 @@ uses
   SquadPresets in 'SquadPresets.pas',
   PresetSaveForm in 'PresetSaveForm.pas' {FrmPresetSave},
   PresetLoadForm in 'PresetLoadForm.pas' {FrmPresetLoad},
+  ModsForm in 'ModsForm.pas' {FrmMods},
   Vcl.Themes,
   Vcl.Styles;
 

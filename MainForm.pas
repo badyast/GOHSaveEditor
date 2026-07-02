@@ -136,6 +136,7 @@ type
     FMenuSavePreset: TMenuItem;
     FMenuLoadPreset: TMenuItem;
     FMenuWarnOnClose: TMenuItem;
+    FMenuEditMods: TMenuItem;
     procedure SetControlsEnabled(AEnabled: Boolean);
     procedure BlinkForm(AColor: TColor; ACount: Integer);
     procedure CreateBackup(const FilePath: string);
@@ -188,6 +189,7 @@ type
     procedure ApplyPreset(const Preset: TSquadPreset);
     procedure SetSquadStage(SquadIndex: Integer; const NewStage: string);
     procedure WarnOnCloseClick(Sender: TObject);
+    procedure EditModsClick(Sender: TObject);
 
   public
 
@@ -201,7 +203,7 @@ var
 implementation
 
 uses
-  BackupOptionsForm, PresetSaveForm, PresetLoadForm;
+  BackupOptionsForm, PresetSaveForm, PresetLoadForm, ModsForm;
 
 {$R *.dfm}
 
@@ -283,6 +285,13 @@ begin
   FMenuWarnOnClose.Checked := Settings.WarnOnClose;
   FMenuWarnOnClose.OnClick := WarnOnCloseClick;
   Optionen1.Insert(1, FMenuWarnOnClose);
+
+  // Menüeintrag "Aktive Mods bearbeiten" im Optionsmenü
+  FMenuEditMods := TMenuItem.Create(Self);
+  FMenuEditMods.Caption := GetLanguageStrings(Settings.Language).MenuEditMods;
+  FMenuEditMods.OnClick := EditModsClick;
+  FMenuEditMods.Enabled := False;
+  Optionen1.Insert(2, FMenuEditMods);
 
   // Menüs initial deaktivieren (kein Save geladen)
   if Assigned(FSortMenu) then
@@ -412,6 +421,10 @@ begin
   // Vorlagen-Menü aktivieren/deaktivieren
   if Assigned(FPresetsMenu) then
     FPresetsMenu.Enabled := AEnabled;
+
+  // Mods-Menüeintrag aktivieren/deaktivieren
+  if Assigned(FMenuEditMods) then
+    FMenuEditMods.Enabled := AEnabled;
 end;
 
 procedure TFrmMain.BlinkForm(AColor: TColor; ACount: Integer);
@@ -2353,6 +2366,8 @@ begin
   Dunkel1.Caption := Lang.ThemeDark;
   if Assigned(FMenuWarnOnClose) then
     FMenuWarnOnClose.Caption := Lang.MenuWarnOnClose;
+  if Assigned(FMenuEditMods) then
+    FMenuEditMods.Caption := Lang.MenuEditMods;
 
   // Sortier-Menü neu aufbauen
   RebuildSortMenu;
@@ -2658,6 +2673,30 @@ procedure TFrmMain.WarnOnCloseClick(Sender: TObject);
 begin
   Settings.WarnOnClose := FMenuWarnOnClose.Checked;
   Settings.Save;
+end;
+
+procedure TFrmMain.EditModsClick(Sender: TObject);
+var
+  Dlg: TFrmMods;
+  Lang: TLanguageStrings;
+begin
+  if not Assigned(FSave) then
+    Exit;
+
+  Lang := GetLanguageStrings(Settings.Language);
+  Dlg := TFrmMods.Create(Self);
+  try
+    Dlg.LoadLanguage(Lang);
+    Dlg.SetMods(FSave.GetMods);
+    if Dlg.ShowModal = mrOk then
+    begin
+      FSave.SetMods(Dlg.GetMods);
+      FSquadsDirty := True;
+      ShowStatus(Lang.ModsSaved);
+    end;
+  finally
+    Dlg.Free;
+  end;
 end;
 
 procedure TFrmMain.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
