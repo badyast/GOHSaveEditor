@@ -122,6 +122,7 @@ type
     procedure Hilfe2Click(Sender: TObject);
     procedure About1Click(Sender: TObject);
     procedure FormResize(Sender: TObject);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 
   private
     FSquads: TArray<TSquadData>; // Live-Datenstruktur
@@ -134,6 +135,7 @@ type
     FPresetsMenu: TMenuItem; // Referenz auf Vorlagen-Menü
     FMenuSavePreset: TMenuItem;
     FMenuLoadPreset: TMenuItem;
+    FMenuWarnOnClose: TMenuItem;
     procedure SetControlsEnabled(AEnabled: Boolean);
     procedure BlinkForm(AColor: TColor; ACount: Integer);
     procedure CreateBackup(const FilePath: string);
@@ -185,6 +187,7 @@ type
     procedure LoadPresetClick(Sender: TObject);
     procedure ApplyPreset(const Preset: TSquadPreset);
     procedure SetSquadStage(SquadIndex: Integer; const NewStage: string);
+    procedure WarnOnCloseClick(Sender: TObject);
 
   public
 
@@ -272,6 +275,14 @@ begin
 
   // Vorlagen-Menü hinzufügen
   AddPresetsMenu;
+
+  // Menüeintrag "Warnung bei ungespeicherten Änderungen" im Optionsmenü
+  FMenuWarnOnClose := TMenuItem.Create(Self);
+  FMenuWarnOnClose.Caption := GetLanguageStrings(Settings.Language).MenuWarnOnClose;
+  FMenuWarnOnClose.AutoCheck := True;
+  FMenuWarnOnClose.Checked := Settings.WarnOnClose;
+  FMenuWarnOnClose.OnClick := WarnOnCloseClick;
+  Optionen1.Insert(1, FMenuWarnOnClose);
 
   // Menüs initial deaktivieren (kein Save geladen)
   if Assigned(FSortMenu) then
@@ -2340,6 +2351,8 @@ begin
   Design1.Caption := Lang.MenuTheme;
   Hell1.Caption := Lang.ThemeLight;
   Dunkel1.Caption := Lang.ThemeDark;
+  if Assigned(FMenuWarnOnClose) then
+    FMenuWarnOnClose.Caption := Lang.MenuWarnOnClose;
 
   // Sortier-Menü neu aufbauen
   RebuildSortMenu;
@@ -2414,6 +2427,7 @@ begin
     LoadSquadsFromSave;
     UpdateTreeViewsFromSquads;
     ClearInfoPanel;
+    FSquadsDirty := True;
 
     ElapsedMs := Round((Now - StartTime) * 24 * 60 * 60 * 1000);
     jachLog.LogInfo('Squad-Sortierung erfolgreich abgeschlossen in %d ms',
@@ -2638,6 +2652,68 @@ end;
 procedure TFrmMain.About1Click(Sender: TObject);
 begin
   AboutForm.TFrmAbout.Create(Self).ShowModal;
+end;
+
+procedure TFrmMain.WarnOnCloseClick(Sender: TObject);
+begin
+  Settings.WarnOnClose := FMenuWarnOnClose.Checked;
+  Settings.Save;
+end;
+
+procedure TFrmMain.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+var
+  TaskDlg: TTaskDialog;
+  Lang: TLanguageStrings;
+begin
+  CanClose := True;
+
+  if FSquadsDirty and Settings.WarnOnClose then
+  begin
+    Lang := GetLanguageStrings(Settings.Language);
+
+    TaskDlg := TTaskDialog.Create(Self);
+    try
+      TaskDlg.Caption := Lang.MsgCloseUnsavedTitle;
+      TaskDlg.Title := Lang.MsgCloseUnsavedTitle;
+      TaskDlg.Text := Lang.MsgCloseUnsaved;
+      TaskDlg.MainIcon := tdiWarning;
+      TaskDlg.CommonButtons := [];
+      TaskDlg.Flags := [];
+      TaskDlg.VerificationText := Lang.ChkDontShowAgain;
+
+      with TaskDlg.Buttons.Add do
+      begin
+        Caption := Lang.BtnOK;
+        ModalResult := mrYes;
+        Default := True;
+      end;
+      with TaskDlg.Buttons.Add do
+      begin
+        Caption := Lang.BtnCancel;
+        ModalResult := mrCancel;
+      end;
+
+      if TaskDlg.Execute then
+      begin
+        if TaskDlg.ModalResult = mrYes then
+        begin
+          if tfVerificationFlagChecked in TaskDlg.Flags then
+          begin
+            Settings.WarnOnClose := False;
+            FMenuWarnOnClose.Checked := False;
+            Settings.Save;
+          end;
+          CanClose := True;
+        end
+        else
+          CanClose := False;
+      end
+      else
+        CanClose := False;
+    finally
+      TaskDlg.Free;
+    end;
+  end;
 end;
 
 // ============================================================================

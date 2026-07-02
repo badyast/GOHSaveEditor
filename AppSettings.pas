@@ -13,6 +13,7 @@ type
     FMaxBackupCount: Integer;
     FLanguage: string;
     FTheme: string;
+    FWarnOnClose: Boolean;
     function GetSettingsFilePath: string;
     function DetectSystemLanguage: string;
     function DetectSystemTheme: string;
@@ -26,6 +27,7 @@ type
     property MaxBackupCount: Integer read FMaxBackupCount write FMaxBackupCount;
     property Language: string read FLanguage write FLanguage;
     property Theme: string read FTheme write FTheme;
+    property WarnOnClose: Boolean read FWarnOnClose write FWarnOnClose;
 
     procedure Save;
   end;
@@ -113,6 +115,7 @@ begin
   FMaxBackupCount := -1; // -1 = unbegrenzt
   FLanguage := DetectSystemLanguage;
   FTheme := DetectSystemTheme;
+  FWarnOnClose := True;
 
   // Aus INI laden (überschreibt Defaults wenn vorhanden)
   if SettingsFileExists then
@@ -121,6 +124,7 @@ begin
     FMaxBackupCount := FIniFile.ReadInteger('Backup', 'MaxCount', FMaxBackupCount);
     FLanguage := FIniFile.ReadString('General', 'Language', FLanguage);
     FTheme := FIniFile.ReadString('General', 'Theme', FTheme);
+    FWarnOnClose := FIniFile.ReadBool('General', 'WarnOnClose', FWarnOnClose);
   end;
 end;
 
@@ -130,6 +134,7 @@ begin
   FIniFile.WriteInteger('Backup', 'MaxCount', FMaxBackupCount);
   FIniFile.WriteString('General', 'Language', FLanguage);
   FIniFile.WriteString('General', 'Theme', FTheme);
+  FIniFile.WriteBool('General', 'WarnOnClose', FWarnOnClose);
   FIniFile.UpdateFile;
 end;
 

@@ -157,6 +157,11 @@ type
     PresetSavedSuccess: string;
     PresetLoadedSuccess: string;
     PresetNoPresetsFound: string;
+    // Close warning
+    MsgCloseUnsaved: string;
+    MsgCloseUnsavedTitle: string;
+    ChkDontShowAgain: string;
+    MenuWarnOnClose: string;
   end;
 
 function GetLanguageStrings(const LanguageCode: string): TLanguageStrings;
@@ -341,6 +346,11 @@ begin
   Result.PresetSavedSuccess := 'Vorlage gespeichert: %s';
   Result.PresetLoadedSuccess := 'Vorlage geladen: %s';
   Result.PresetNoPresetsFound := 'Keine Vorlagen gefunden.';
+  // Close warning
+  Result.MsgCloseUnsaved := 'Es gibt ungespeicherte '#196'nderungen. Wirklich beenden?';
+  Result.MsgCloseUnsavedTitle := 'Ungespeicherte '#196'nderungen';
+  Result.ChkDontShowAgain := 'Diese Meldung nicht mehr anzeigen';
+  Result.MenuWarnOnClose := 'Warnung bei ungespeicherten '#196'nderungen';
 end;
 
 function GetEnglishStrings: TLanguageStrings;
@@ -486,6 +496,11 @@ begin
   Result.PresetSavedSuccess := 'Preset saved: %s';
   Result.PresetLoadedSuccess := 'Preset loaded: %s';
   Result.PresetNoPresetsFound := 'No presets found.';
+  // Close warning
+  Result.MsgCloseUnsaved := 'There are unsaved changes. Really quit?';
+  Result.MsgCloseUnsavedTitle := 'Unsaved Changes';
+  Result.ChkDontShowAgain := 'Don''t show this message again';
+  Result.MenuWarnOnClose := 'Warn on unsaved changes when closing';
 end;
 
 function GetLanguageStrings(const LanguageCode: string): TLanguageStrings;
