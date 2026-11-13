@@ -12,6 +12,7 @@ type
     StageFilter: string;
     DisplayName: string;
     SquadCount: Integer;
+    InAllGroups: Boolean; // Teil der Vorlage "Alle Gruppen" (Gruppen 1-5)
   end;
 
   TFrmPresetSave = class(TForm)
@@ -34,6 +35,9 @@ type
   public
     procedure SetAvailableGroups(const Groups: TArray<TGroupInfo>);
     function GetPresetName: string;
+    // True = alle Gruppen 1-5 speichern
+    function AllGroupsSelected: Boolean;
+    // Nur gueltig, wenn AllGroupsSelected = False
     function GetSelectedStageFilter: string;
   end;
 
@@ -65,23 +69,49 @@ end;
 procedure TFrmPresetSave.SetAvailableGroups(const Groups: TArray<TGroupInfo>);
 var
   I: Integer;
+  Lang: TLanguageStrings;
 begin
+  Lang := GetLanguageStrings(Settings.Language);
   FAvailableGroups := Groups;
   CmbGroup.Items.Clear;
+  // Index 0 = alle Gruppen, danach die einzelnen Gruppen
+  CmbGroup.Items.Add(Lang.PresetAllGroups);
   for I := 0 to Length(Groups) - 1 do
     CmbGroup.Items.Add(Groups[I].DisplayName);
-  if CmbGroup.Items.Count > 0 then
-    CmbGroup.ItemIndex := 0;
+  CmbGroup.ItemIndex := 0;
   UpdateInfo;
 end;
 
 procedure TFrmPresetSave.UpdateInfo;
 var
+  I, Total: Integer;
+  Lines: TStringList;
   Lang: TLanguageStrings;
 begin
   Lang := GetLanguageStrings(Settings.Language);
-  if (CmbGroup.ItemIndex >= 0) and (CmbGroup.ItemIndex < Length(FAvailableGroups)) then
-    LblInfo.Caption := Format(Lang.PresetSaveInfo, [FAvailableGroups[CmbGroup.ItemIndex].SquadCount])
+
+  if AllGroupsSelected then
+  begin
+    Lines := TStringList.Create;
+    try
+      Total := 0;
+      for I := 0 to Length(FAvailableGroups) - 1 do
+        if FAvailableGroups[I].InAllGroups then
+        begin
+          Lines.Add(Format(Lang.PresetGroupLine,
+            [FAvailableGroups[I].DisplayName, FAvailableGroups[I].SquadCount]));
+          Inc(Total, FAvailableGroups[I].SquadCount);
+        end;
+      Lines.Add('');
+      Lines.Add(Format(Lang.PresetSaveInfo, [Total]));
+      LblInfo.Caption := TrimRight(Lines.Text);
+    finally
+      Lines.Free;
+    end;
+  end
+  else if (CmbGroup.ItemIndex > 0) and (CmbGroup.ItemIndex <= Length(FAvailableGroups)) then
+    LblInfo.Caption := Format(Lang.PresetSaveInfo,
+      [FAvailableGroups[CmbGroup.ItemIndex - 1].SquadCount])
   else
     LblInfo.Caption := '';
 end;
@@ -117,10 +147,15 @@ begin
   Result := Trim(EdtName.Text);
 end;
 
+function TFrmPresetSave.AllGroupsSelected: Boolean;
+begin
+  Result := CmbGroup.ItemIndex = 0;
+end;
+
 function TFrmPresetSave.GetSelectedStageFilter: string;
 begin
-  if (CmbGroup.ItemIndex >= 0) and (CmbGroup.ItemIndex < Length(FAvailableGroups)) then
-    Result := FAvailableGroups[CmbGroup.ItemIndex].StageFilter
+  if (CmbGroup.ItemIndex > 0) and (CmbGroup.ItemIndex <= Length(FAvailableGroups)) then
+    Result := FAvailableGroups[CmbGroup.ItemIndex - 1].StageFilter
   else
     Result := '';
 end;

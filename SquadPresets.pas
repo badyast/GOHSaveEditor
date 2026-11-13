@@ -6,12 +6,21 @@ uses
   System.SysUtils, System.Classes, System.IOUtils, System.JSON,
   System.Generics.Collections, System.DateUtils;
 
+const
+  // Gruppen, die in einer Vorlage gespeichert werden (stage_special bleibt aussen vor)
+  PRESET_STAGES: array[0..4] of string = ('stage_1', 'stage_2', 'stage_3', 'stage_4', 'stage_5');
+
 type
+  TPresetGroup = record
+    StageFilter: string;        // z.B. 'stage_1'
+    SquadNames: TArray<string>; // Namen der Squads in dieser Gruppe
+  end;
+
   TSquadPreset = record
     Name: string;
     Created: TDateTime;
-    StageFilter: string;      // z.B. 'stage_1', 'stage_special'
-    SquadNames: TArray<string>; // Namen der Squads in dieser Gruppe
+    Groups: TArray<TPresetGroup>;
+    function TotalSquadCount: Integer;
   end;
 
   TSquadPresetManager = class
@@ -47,6 +56,17 @@ begin
   Result := FPresetManager;
 end;
 
+{ TSquadPreset }
+
+function TSquadPreset.TotalSquadCount: Integer;
+var
+  I: Integer;
+begin
+  Result := 0;
+  for I := 0 to Length(Groups) - 1 do
+    Inc(Result, Length(Groups[I].SquadNames));
+end;
+
 { TSquadPresetManager }
 
 constructor TSquadPresetManager.Create;
@@ -70,19 +90,28 @@ end;
 
 function TSquadPresetManager.PresetToJSON(const Preset: TSquadPreset): TJSONObject;
 var
-  SquadsArray: TJSONArray;
-  I: Integer;
+  GroupsArray, SquadsArray: TJSONArray;
+  GroupObj: TJSONObject;
+  I, J: Integer;
 begin
   Result := TJSONObject.Create;
   try
     Result.AddPair('name', Preset.Name);
     Result.AddPair('created', DateToISO8601(Preset.Created, False));
-    Result.AddPair('stageFilter', Preset.StageFilter);
 
-    SquadsArray := TJSONArray.Create;
-    for I := 0 to Length(Preset.SquadNames) - 1 do
-      SquadsArray.Add(Preset.SquadNames[I]);
-    Result.AddPair('squadNames', SquadsArray);
+    GroupsArray := TJSONArray.Create;
+    Result.AddPair('groups', GroupsArray);
+    for I := 0 to Length(Preset.Groups) - 1 do
+    begin
+      GroupObj := TJSONObject.Create;
+      GroupsArray.AddElement(GroupObj);
+      GroupObj.AddPair('stage', Preset.Groups[I].StageFilter);
+
+      SquadsArray := TJSONArray.Create;
+      GroupObj.AddPair('squadNames', SquadsArray);
+      for J := 0 to Length(Preset.Groups[I].SquadNames) - 1 do
+        SquadsArray.Add(Preset.Groups[I].SquadNames[J]);
+    end;
   except
     Result.Free;
     raise;
@@ -90,22 +119,43 @@ begin
 end;
 
 function TSquadPresetManager.JSONToPreset(const JSON: TJSONObject): TSquadPreset;
+
+  function ReadNames(const Arr: TJSONArray): TArray<string>;
+  var
+    K: Integer;
+  begin
+    SetLength(Result, Arr.Count);
+    for K := 0 to Arr.Count - 1 do
+      Result[K] := Arr.Items[K].Value;
+  end;
+
 var
-  SquadsArray: TJSONArray;
+  GroupsArray, SquadsArray: TJSONArray;
+  GroupObj: TJSONObject;
   I: Integer;
-  CreatedStr: string;
 begin
   Result.Name := JSON.GetValue<string>('name');
+  Result.Created := ISO8601ToDate(JSON.GetValue<string>('created'), False);
 
-  CreatedStr := JSON.GetValue<string>('created');
-  Result.Created := ISO8601ToDate(CreatedStr, False);
-
-  JSON.TryGetValue<string>('stageFilter', Result.StageFilter);
-
-  SquadsArray := JSON.GetValue<TJSONArray>('squadNames');
-  SetLength(Result.SquadNames, SquadsArray.Count);
-  for I := 0 to SquadsArray.Count - 1 do
-    Result.SquadNames[I] := SquadsArray.Items[I].Value;
+  if JSON.TryGetValue<TJSONArray>('groups', GroupsArray) then
+  begin
+    // Neues Format: mehrere Gruppen
+    SetLength(Result.Groups, GroupsArray.Count);
+    for I := 0 to GroupsArray.Count - 1 do
+    begin
+      GroupObj := GroupsArray.Items[I] as TJSONObject;
+      Result.Groups[I].StageFilter := GroupObj.GetValue<string>('stage');
+      Result.Groups[I].SquadNames := ReadNames(GroupObj.GetValue<TJSONArray>('squadNames'));
+    end;
+  end
+  else
+  begin
+    // Altes Format: eine einzelne Gruppe (stageFilter + squadNames)
+    SetLength(Result.Groups, 1);
+    JSON.TryGetValue<string>('stageFilter', Result.Groups[0].StageFilter);
+    SquadsArray := JSON.GetValue<TJSONArray>('squadNames');
+    Result.Groups[0].SquadNames := ReadNames(SquadsArray);
+  end;
 end;
 
 function TSquadPresetManager.SavePreset(const Preset: TSquadPreset): string;
@@ -150,6 +200,8 @@ var
 begin
   Content := TFile.ReadAllText(FileName, TEncoding.UTF8);
   JSON := TJSONObject.ParseJSONValue(Content) as TJSONObject;
+  if JSON = nil then
+    raise Exception.CreateFmt('Ungueltige Vorlagendatei: %s', [TPath.GetFileName(FileName)]);
   try
     Result := JSONToPreset(JSON);
   finally

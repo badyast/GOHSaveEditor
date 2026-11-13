@@ -186,7 +186,7 @@ type
     procedure RebuildPresetsMenu;
     procedure SavePresetClick(Sender: TObject);
     procedure LoadPresetClick(Sender: TObject);
-    procedure ApplyPreset(const Preset: TSquadPreset);
+    function ApplyPreset(const Preset: TSquadPreset): TArray<string>;
     procedure SetSquadStage(SquadIndex: Integer; const NewStage: string);
     procedure WarnOnCloseClick(Sender: TObject);
     procedure EditModsClick(Sender: TObject);
@@ -2799,64 +2799,50 @@ begin
 end;
 
 procedure TFrmMain.SavePresetClick(Sender: TObject);
+
+  function CollectSquads(const Stage: string): TArray<string>;
+  var
+    K, N: Integer;
+  begin
+    SetLength(Result, Length(FSquads));
+    N := 0;
+    for K := 0 to Length(FSquads) - 1 do
+      if SameText(FSquads[K].Stage, Stage) then
+      begin
+        Result[N] := FSquads[K].Name;
+        Inc(N);
+      end;
+    SetLength(Result, N);
+  end;
+
 var
   Dlg: TFrmPresetSave;
   Groups: TArray<PresetSaveForm.TGroupInfo>;
-  I, Count: Integer;
-  HasStage: array[1..5] of Boolean;
-  HasSpecial: Boolean;
-  StageCount: array[1..5] of Integer;
-  SpecialCount: Integer;
+  G, SpecialCount: Integer;
   Preset: TSquadPreset;
-  StageFilter: string;
   FileName: string;
   Lang: TLanguageStrings;
 begin
   Lang := GetLanguageStrings(Settings.Language);
 
-  // Zaehlen welche Stages existieren
-  for I := 1 to 5 do
+  // Gruppen 1-5 immer anbieten, Spezialgruppe nur als Einzelvorlage und nur wenn vorhanden
+  SetLength(Groups, Length(PRESET_STAGES));
+  for G := 0 to High(PRESET_STAGES) do
   begin
-    HasStage[I] := False;
-    StageCount[I] := 0;
-  end;
-  HasSpecial := False;
-  SpecialCount := 0;
-
-  for I := 0 to Length(FSquads) - 1 do
-  begin
-    if Pos('stage_1', FSquads[I].Stage) > 0 then begin HasStage[1] := True; Inc(StageCount[1]); end
-    else if Pos('stage_2', FSquads[I].Stage) > 0 then begin HasStage[2] := True; Inc(StageCount[2]); end
-    else if Pos('stage_3', FSquads[I].Stage) > 0 then begin HasStage[3] := True; Inc(StageCount[3]); end
-    else if Pos('stage_4', FSquads[I].Stage) > 0 then begin HasStage[4] := True; Inc(StageCount[4]); end
-    else if Pos('stage_5', FSquads[I].Stage) > 0 then begin HasStage[5] := True; Inc(StageCount[5]); end
-    else if Pos('stage_special', FSquads[I].Stage) > 0 then begin HasSpecial := True; Inc(SpecialCount); end;
+    Groups[G].StageFilter := PRESET_STAGES[G];
+    Groups[G].DisplayName := Lang.GroupPrefix + ' ' + IntToStr(G + 1);
+    Groups[G].SquadCount := Length(CollectSquads(PRESET_STAGES[G]));
+    Groups[G].InAllGroups := True;
   end;
 
-  // Gruppen-Array aufbauen
-  SetLength(Groups, 0);
-  for I := 1 to 5 do
-  begin
-    if HasStage[I] then
-    begin
-      SetLength(Groups, Length(Groups) + 1);
-      Groups[High(Groups)].StageFilter := 'stage_' + IntToStr(I);
-      Groups[High(Groups)].DisplayName := Lang.GroupPrefix + ' ' + IntToStr(I);
-      Groups[High(Groups)].SquadCount := StageCount[I];
-    end;
-  end;
-  if HasSpecial then
+  SpecialCount := Length(CollectSquads('stage_special'));
+  if SpecialCount > 0 then
   begin
     SetLength(Groups, Length(Groups) + 1);
     Groups[High(Groups)].StageFilter := 'stage_special';
     Groups[High(Groups)].DisplayName := Lang.GroupSpecial;
     Groups[High(Groups)].SquadCount := SpecialCount;
-  end;
-
-  if Length(Groups) = 0 then
-  begin
-    Application.MessageBox(PChar('Keine Gruppen gefunden.'), PChar(Lang.PresetSaveCaption), MB_ICONWARNING);
-    Exit;
+    Groups[High(Groups)].InAllGroups := False;
   end;
 
   Dlg := TFrmPresetSave.Create(Self);
@@ -2865,33 +2851,30 @@ begin
 
     if Dlg.ShowModal = mrOK then
     begin
-      StageFilter := Dlg.GetSelectedStageFilter;
-
-      // Squad-Namen fuer diese Stage sammeln
       Preset.Name := Dlg.GetPresetName;
       Preset.Created := Now;
-      Preset.StageFilter := StageFilter;
 
-      Count := 0;
-      for I := 0 to Length(FSquads) - 1 do
-        if Pos(StageFilter, FSquads[I].Stage) > 0 then
-          Inc(Count);
-
-      SetLength(Preset.SquadNames, Count);
-      Count := 0;
-      for I := 0 to Length(FSquads) - 1 do
+      if Dlg.AllGroupsSelected then
       begin
-        if Pos(StageFilter, FSquads[I].Stage) > 0 then
+        SetLength(Preset.Groups, Length(PRESET_STAGES));
+        for G := 0 to High(PRESET_STAGES) do
         begin
-          Preset.SquadNames[Count] := FSquads[I].Name;
-          Inc(Count);
+          Preset.Groups[G].StageFilter := PRESET_STAGES[G];
+          Preset.Groups[G].SquadNames := CollectSquads(PRESET_STAGES[G]);
         end;
+      end
+      else
+      begin
+        SetLength(Preset.Groups, 1);
+        Preset.Groups[0].StageFilter := Dlg.GetSelectedStageFilter;
+        Preset.Groups[0].SquadNames := CollectSquads(Preset.Groups[0].StageFilter);
       end;
 
       try
         FileName := GetPresetManager.SavePreset(Preset);
         ShowStatus(Format(Lang.PresetSavedSuccess, [TPath.GetFileName(FileName)]));
-        jachLog.LogInfo('Preset gespeichert: %s (%d Squads)', [FileName, Length(Preset.SquadNames)]);
+        jachLog.LogInfo('Preset gespeichert: %s (%d Squads in %d Gruppen)',
+          [FileName, Preset.TotalSquadCount, Length(Preset.Groups)]);
       except
         on E: Exception do
         begin
@@ -2909,6 +2892,7 @@ procedure TFrmMain.LoadPresetClick(Sender: TObject);
 var
   Dlg: TFrmPresetLoad;
   Preset: TSquadPreset;
+  Missing: TArray<string>;
   Lang: TLanguageStrings;
 begin
   Lang := GetLanguageStrings(Settings.Language);
@@ -2928,12 +2912,17 @@ begin
         Preset := Dlg.GetSelectedPreset;
 
         try
-          ApplyPreset(Preset);
+          Missing := ApplyPreset(Preset);
           LoadSquadsFromSave; // Daten neu laden
           UpdateTreeViewsFromSquads;
 
           ShowStatus(Format(Lang.PresetLoadedSuccess, [Preset.Name]));
-          jachLog.LogInfo('Preset geladen: %s', [Preset.Name]);
+          jachLog.LogInfo('Preset geladen: %s (%d Squads nicht gefunden)', [Preset.Name, Length(Missing)]);
+          if Length(Missing) > 0 then
+            Application.MessageBox(
+              PChar(Format(Lang.PresetMissingSquads, [Preset.Name, Length(Missing)]) +
+                sLineBreak + sLineBreak + string.Join(sLineBreak, Missing)),
+              PChar(Lang.PresetLoadCaption), MB_ICONWARNING);
         except
           on E: Exception do
           begin
@@ -3008,51 +2997,75 @@ begin
     [SquadIndex, OldStage, NewStage]);
 end;
 
-procedure TFrmMain.ApplyPreset(const Preset: TSquadPreset);
+// Gibt die nicht gefundenen Squads zurueck (je Eintrag "Gruppe X: squadname")
+function TFrmMain.ApplyPreset(const Preset: TSquadPreset): TArray<string>;
 var
-  I, J: Integer;
-  SquadFound: Boolean;
+  I, J, G: Integer;
+  GroupName: string;
+  SquadFound, InPreset: Boolean;
   AlreadyAssigned: TList<Integer>;
+  Stage: string;
 begin
-  jachLog.LogInfo('ApplyPreset: Wende Preset "%s" an (Stage: %s, %d Squads)',
-    [Preset.Name, Preset.StageFilter, Length(Preset.SquadNames)]);
+  jachLog.LogInfo('ApplyPreset: Wende Preset "%s" an (%d Gruppen, %d Squads)',
+    [Preset.Name, Length(Preset.Groups), Preset.TotalSquadCount]);
 
+  Result := nil;
   AlreadyAssigned := TList<Integer>.Create;
   try
-    // Schritt 1: Allen Squads mit diesem StageFilter den Stage entfernen
+    // Schritt 1: Alle Squads aus den Gruppen der Vorlage entfernen
     for I := 0 to Length(FSquads) - 1 do
     begin
-      if Pos(Preset.StageFilter, FSquads[I].Stage) > 0 then
+      InPreset := False;
+      for G := 0 to Length(Preset.Groups) - 1 do
+        if SameText(FSquads[I].Stage, Preset.Groups[G].StageFilter) then
+        begin
+          InPreset := True;
+          Break;
+        end;
+
+      if InPreset then
       begin
         jachLog.LogDebug('Entferne Stage von Squad %d (%s)', [I, FSquads[I].Name]);
         SetSquadStage(I, '');
       end;
     end;
 
-    // Schritt 2: Allen Squads aus dem Preset den StageFilter zuweisen
-    // Bei gleichnamigen Squads: Jeden nur einmal zuweisen
-    for I := 0 to Length(Preset.SquadNames) - 1 do
+    // Schritt 2: Squads der Vorlage ihren Gruppen zuweisen
+    // Bei gleichnamigen Squads: Jeden nur einmal zuweisen.
+    // Squads der Spezialgruppe werden nur von Vorlagen fuer die Spezialgruppe angefasst.
+    for G := 0 to Length(Preset.Groups) - 1 do
     begin
-      SquadFound := False;
-      for J := 0 to Length(FSquads) - 1 do
+      Stage := Preset.Groups[G].StageFilter;
+      for I := 0 to Length(Preset.Groups[G].SquadNames) - 1 do
       begin
-        // Pruefen ob dieser Squad schon zugewiesen wurde
-        if AlreadyAssigned.Contains(J) then
-          Continue;
-
-        if SameText(FSquads[J].Name, Preset.SquadNames[I]) then
+        SquadFound := False;
+        for J := 0 to Length(FSquads) - 1 do
         begin
-          jachLog.LogDebug('Setze Stage "%s" fuer Squad %d (%s)',
-            [Preset.StageFilter, J, FSquads[J].Name]);
-          SetSquadStage(J, Preset.StageFilter);
-          AlreadyAssigned.Add(J);
-          SquadFound := True;
-          Break;
+          if AlreadyAssigned.Contains(J) then
+            Continue;
+
+          if SameText(FSquads[J].Stage, 'stage_special') and not SameText(Stage, 'stage_special') then
+            Continue;
+
+          if SameText(FSquads[J].Name, Preset.Groups[G].SquadNames[I]) then
+          begin
+            jachLog.LogDebug('Setze Stage "%s" fuer Squad %d (%s)', [Stage, J, FSquads[J].Name]);
+            SetSquadStage(J, Stage);
+            AlreadyAssigned.Add(J);
+            SquadFound := True;
+            Break;
+          end;
+        end;
+
+        if not SquadFound then
+        begin
+          jachLog.LogWarning('Squad "%s" aus Preset nicht gefunden', [Preset.Groups[G].SquadNames[I]]);
+          GroupName := Trim(GetStageGroupDisplay(Stage));
+          if (GroupName <> '') and (GroupName[1] = '[') then
+            GroupName := Copy(GroupName, 2, Length(GroupName) - 2);
+          Result := Result + [GroupName + ': ' + Preset.Groups[G].SquadNames[I]];
         end;
       end;
-
-      if not SquadFound then
-        jachLog.LogWarning('Squad "%s" aus Preset nicht gefunden', [Preset.SquadNames[I]]);
     end;
   finally
     AlreadyAssigned.Free;

@@ -132,7 +132,8 @@ end;
 procedure TFrmPresetLoad.UpdatePreview;
 var
   Index: Integer;
-  I: Integer;
+  I, J: Integer;
+  GroupNames: string;
   Lang: TLanguageStrings;
 begin
   Lang := GetLanguageStrings(Settings.Language);
@@ -158,14 +159,32 @@ begin
     LblPresetName.Caption := FSelectedPreset.Name;
     LblCreated.Caption := Lang.PresetCreatedLabel + ' ' +
       FormatDateTime('dd.mm.yyyy hh:nn', FSelectedPreset.Created);
-    LblGroupInfo.Caption := Format(Lang.PresetGroupInfo,
-      [StageFilterToDisplayName(FSelectedPreset.StageFilter)]);
+    GroupNames := '';
+    for I := 0 to Length(FSelectedPreset.Groups) - 1 do
+    begin
+      if GroupNames <> '' then
+        GroupNames := GroupNames + ', ';
+      GroupNames := GroupNames + StageFilterToDisplayName(FSelectedPreset.Groups[I].StageFilter);
+    end;
+    LblGroupInfo.Caption := Format(Lang.PresetGroupInfo, [GroupNames]);
 
-    MemoPreview.Clear;
-    MemoPreview.Lines.Add(Format(Lang.PresetSquadCountLabel, [Length(FSelectedPreset.SquadNames)]));
-    MemoPreview.Lines.Add('');
-    for I := 0 to Length(FSelectedPreset.SquadNames) - 1 do
-      MemoPreview.Lines.Add('- ' + FSelectedPreset.SquadNames[I]);
+    MemoPreview.Lines.BeginUpdate;
+    try
+      MemoPreview.Clear;
+      MemoPreview.Lines.Add(Format(Lang.PresetSquadCountLabel, [FSelectedPreset.TotalSquadCount]));
+      for I := 0 to Length(FSelectedPreset.Groups) - 1 do
+      begin
+        MemoPreview.Lines.Add('');
+        MemoPreview.Lines.Add(Format(Lang.PresetGroupLine,
+          [StageFilterToDisplayName(FSelectedPreset.Groups[I].StageFilter),
+           Length(FSelectedPreset.Groups[I].SquadNames)]));
+        for J := 0 to Length(FSelectedPreset.Groups[I].SquadNames) - 1 do
+          MemoPreview.Lines.Add('  - ' + FSelectedPreset.Groups[I].SquadNames[J]);
+      end;
+    finally
+      MemoPreview.Lines.EndUpdate;
+    end;
+    MemoPreview.SelStart := 0;
 
     BtnLoad.Enabled := True;
     FHasValidSelection := True;

@@ -3,7 +3,7 @@ object FrmPresetSave: TFrmPresetSave
   Top = 0
   BorderStyle = bsDialog
   Caption = 'Vorlage speichern'
-  ClientHeight = 180
+  ClientHeight = 275
   ClientWidth = 400
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -30,16 +30,17 @@ object FrmPresetSave: TFrmPresetSave
   end
   object LblInfo: TLabel
     Left = 16
-    Top = 120
+    Top = 124
     Width = 368
-    Height = 15
+    Height = 105
     AutoSize = False
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clGray
-    Font.Height = -11
+    Font.Height = -12
     Font.Name = 'Segoe UI'
     Font.Style = []
     ParentFont = False
+    WordWrap = True
   end
   object EdtName: TEdit
     Left = 16
@@ -52,7 +53,7 @@ object FrmPresetSave: TFrmPresetSave
   object CmbGroup: TComboBox
     Left = 16
     Top = 91
-    Width = 200
+    Width = 260
     Height = 23
     Style = csDropDownList
     TabOrder = 1
@@ -60,7 +61,7 @@ object FrmPresetSave: TFrmPresetSave
   end
   object BtnOK: TButton
     Left = 228
-    Top = 145
+    Top = 240
     Width = 75
     Height = 25
     Caption = 'OK'
@@ -70,7 +71,7 @@ object FrmPresetSave: TFrmPresetSave
   end
   object BtnCancel: TButton
     Left = 309
-    Top = 145
+    Top = 240
     Width = 75
     Height = 25
     Cancel = True

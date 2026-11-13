@@ -145,6 +145,9 @@ type
     PresetNameLabel: string;
     PresetGroupLabel: string;
     PresetSaveInfo: string;
+    PresetGroupLine: string;
+    PresetAllGroups: string;
+    PresetMissingSquads: string;
     PresetCreatedLabel: string;
     PresetGroupInfo: string;
     PresetSquadCountLabel: string;
@@ -336,16 +339,19 @@ begin
     'Digitalmindsoft/Barbedwire Studios. Alle Rechte an Gates of Hell: Ostfront liegen bei deren jeweiligen Rechteinhabern.';
   // Preset Feature
   Result.MenuPresets := 'Vorlagen';
-  Result.MenuSavePreset := 'Gruppe speichern...';
+  Result.MenuSavePreset := 'Vorlage speichern...';
   Result.MenuLoadPreset := 'Vorlage laden...';
-  Result.PresetSaveCaption := 'Gruppenvorlage speichern';
+  Result.PresetSaveCaption := 'Vorlage speichern';
   Result.PresetLoadCaption := 'Vorlage laden';
   Result.PresetNameLabel := 'Vorlagenname:';
   Result.PresetGroupLabel := 'Gruppe:';
   Result.PresetSaveInfo := '%d Squads werden gespeichert';
+  Result.PresetGroupLine := '%s: %d Squads';
+  Result.PresetAllGroups := 'Alle Gruppen (1–5, ohne Spezial)';
+  Result.PresetMissingSquads := 'Vorlage "%s" geladen. %d Squads wurden nicht gefunden:';
   Result.PresetCreatedLabel := 'Erstellt:';
-  Result.PresetGroupInfo := 'Gruppe: %s';
-  Result.PresetSquadCountLabel := '%d Squads:';
+  Result.PresetGroupInfo := 'Gruppen: %s';
+  Result.PresetSquadCountLabel := 'Insgesamt %d Squads';
   Result.PresetLoadButton := 'Laden';
   Result.PresetDeleteButton := 'Löschen';
   Result.PresetDeleteConfirm := 'Vorlage "%s" wirklich löschen?';
@@ -495,16 +501,19 @@ begin
     'Digitalmindsoft/Barbedwire Studios. All rights to Gates of Hell: Ostfront belong to their respective owners.';
   // Preset Feature
   Result.MenuPresets := 'Presets';
-  Result.MenuSavePreset := 'Save group...';
+  Result.MenuSavePreset := 'Save preset...';
   Result.MenuLoadPreset := 'Load preset...';
-  Result.PresetSaveCaption := 'Save Group Preset';
+  Result.PresetSaveCaption := 'Save Preset';
   Result.PresetLoadCaption := 'Load Preset';
   Result.PresetNameLabel := 'Preset name:';
   Result.PresetGroupLabel := 'Group:';
   Result.PresetSaveInfo := '%d squads will be saved';
+  Result.PresetGroupLine := '%s: %d squads';
+  Result.PresetAllGroups := 'All groups (1–5, excluding special)';
+  Result.PresetMissingSquads := 'Preset "%s" loaded. %d squads were not found:';
   Result.PresetCreatedLabel := 'Created:';
-  Result.PresetGroupInfo := 'Group: %s';
-  Result.PresetSquadCountLabel := '%d squads:';
+  Result.PresetGroupInfo := 'Groups: %s';
+  Result.PresetSquadCountLabel := '%d squads in total';
   Result.PresetLoadButton := 'Load';
   Result.PresetDeleteButton := 'Delete';
   Result.PresetDeleteConfirm := 'Really delete preset "%s"?';
