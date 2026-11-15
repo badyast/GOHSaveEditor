@@ -51,7 +51,7 @@ begin
 
   Caption := Lang.AboutCaption;
   LblTitle.Caption := 'GOH Savegame Editor';
-  LblVersion.Caption := Lang.AboutVersion + ' 0.9.0 Beta';
+  LblVersion.Caption := Lang.AboutVersion + ' 0.12.0 Beta';
   LblAuthor.Caption := Lang.AboutAuthor + ' badyast';
   LblGitHub.Caption := 'GitHub: github.com/badyast/GOHSaveEditor';
   LblCoffee.Caption := Lang.AboutCoffee;

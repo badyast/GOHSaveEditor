@@ -40,7 +40,7 @@ object FrmAbout: TFrmAbout
       Top = 48
       Width = 96
       Height = 15
-      Caption = 'Version: 0.9.0 Beta'
+      Caption = 'Version: 0.12.0 Beta'
     end
     object LblAuthor: TLabel
       Left = 16

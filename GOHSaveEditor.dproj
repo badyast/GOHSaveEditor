@@ -151,6 +151,16 @@
         <DCCReference Include="BackupOptionsForm.pas">
             <Form>FrmBackupOptions</Form>
         </DCCReference>
+        <DCCReference Include="SquadPresets.pas"/>
+        <DCCReference Include="PresetSaveForm.pas">
+            <Form>FrmPresetSave</Form>
+        </DCCReference>
+        <DCCReference Include="PresetLoadForm.pas">
+            <Form>FrmPresetLoad</Form>
+        </DCCReference>
+        <DCCReference Include="ModsForm.pas">
+            <Form>FrmMods</Form>
+        </DCCReference>
         <None Include="GOHSaveEditor.todo"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
